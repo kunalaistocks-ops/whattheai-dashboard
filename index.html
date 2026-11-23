@@ -2,323 +2,412 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>What the AI!? Performance Dashboard</title>
+<title>What the AI!? · Weekly read</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="assets/chart.umd.min.js"></script>
 <script src="assets/xlsx.full.min.js"></script>
 <script src="data/seed.js"></script>
 <style>
-:root{--navy:#12233D;--paper:#FFF9F1;--orange:#E4572E;--slate:#536173;--mag:#DF3C90;--green:#2E6B4F;--line:#E7DFD1;--soft:#F6EFE4}
+:root{--ink:#12233D;--page:#FBF7F0;--white:#FFFFFF;--now:#E4572E;--then:#AEB7C4;--slate:#536173;--up:#2E6B4F;--down:#C2306F;--line:#E8E1D5;--soft:#F4EEE4}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--paper);color:var(--navy);font-family:"IBM Plex Sans",Arial,sans-serif;font-size:14px;line-height:1.45}
-a{color:var(--orange)}
-.mono{font-family:"IBM Plex Mono",monospace}
+html{scroll-behavior:smooth}
+body{background:var(--page);color:var(--ink);font:15px/1.5 "IBM Plex Sans",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.serif{font-family:Fraunces,Georgia,serif;font-weight:600;letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--now);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
 /* gate */
-#gate{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:50}
-#gate .box{background:var(--paper);border-radius:14px;padding:28px 30px;width:340px}
-#gate h1{font-family:Fraunces,serif;font-size:24px;margin-bottom:6px}#gate h1 span{color:var(--orange)}
-#gate input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;margin:14px 0 10px;font-size:15px}
-#gate .err{color:var(--mag);font-size:12px;min-height:16px}
-/* layout */
-.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-nav{background:var(--navy);color:var(--paper);padding:22px 0;position:sticky;top:0;height:100vh}
-nav .brand{font-family:Fraunces,serif;font-size:22px;padding:0 22px 4px}nav .brand span{color:var(--orange)}
-nav .tag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#C9D1DC;padding:0 22px 22px}
-nav button{display:block;width:100%;text-align:left;background:none;border:0;color:#C9D1DC;padding:10px 22px;font-size:14px;cursor:pointer;border-left:3px solid transparent;font-family:inherit}
-nav button.on,nav button:hover{color:var(--paper);background:#1B3150;border-left-color:var(--orange)}
-nav .foot{position:absolute;bottom:18px;left:22px;right:16px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:#8C99AB}
-main{padding:24px 30px 50px;min-width:0}
-.top{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px;flex-wrap:wrap}
-.top h2{font-family:Fraunces,serif;font-size:28px;font-weight:600}
-.top .asof{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--slate);text-align:right}
-.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase}
-.b-live{background:var(--green);color:#fff}.b-seed{background:#C7B89F;color:var(--navy)}
-section.page{display:none;gap:18px}section.page.on{display:grid}
-.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-.tile .l{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate)}
-.tile .v{font-family:Fraunces,serif;font-size:30px;margin-top:2px}
-.tile .d{font-size:12px;color:var(--slate)}
-.up{color:var(--green)!important}.down{color:var(--mag)!important}
-.g2{display:grid;grid-template-columns:1.5fr 1fr;gap:18px}.g2e{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
-.card h3{font-family:Fraunces,serif;font-weight:600;font-size:18px}
-.card .sub{color:var(--slate);font-size:12px;margin:2px 0 12px}
-.chart{position:relative;height:260px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);padding:6px 8px;border-bottom:2px solid var(--line);cursor:default;white-space:nowrap}
-th.s{cursor:pointer}th.s:hover{color:var(--orange)}
-td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-tr:hover td{background:#FFFBF5}
-.num{text-align:right;font-variant-numeric:tabular-nums}
-.pill{display:inline-block;padding:2px 9px;border-radius:12px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#fff;white-space:nowrap}
-.Scale,.posted{background:var(--green)}.Hold,.scripted,.qc{background:var(--slate)}.Cut,.held,.failed{background:var(--mag)}.Wait,.planned{background:#C7B89F;color:var(--navy)}
-.bar{height:9px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:var(--orange)}
-.trow{margin-bottom:12px}.trow .r{display:flex;justify-content:space-between;font-size:13px;gap:10px}
-.note{font-size:12px;color:var(--slate)}.empty{color:var(--slate);font-style:italic;padding:8px 0}
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-select,input[type=text],input[type=search]{padding:7px 9px;border:1px solid var(--line);border-radius:7px;font-family:inherit;font-size:13px;background:#fff;color:var(--navy)}
-button.btn{background:var(--orange);color:#fff;border:0;border-radius:7px;padding:8px 13px;font-weight:600;cursor:pointer;font-size:13px;font-family:inherit}
-button.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
-/* plan calendar */
-.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
-.day{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;min-height:150px}
-.day.today{border:2px solid var(--orange)}.day.off{background:transparent;border:1px dashed var(--line)}
-.day h4{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);margin-bottom:6px}
-.pc{border-left:3px solid var(--slate);padding:4px 6px;margin-bottom:5px;font-size:11.5px;background:var(--soft);border-radius:0 6px 6px 0;cursor:pointer}
-.pc b{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--slate);font-weight:600}
-.pc.Hardware{border-color:var(--navy)}.pc.Software{border-color:var(--orange)}.pc.HumanAI{border-color:var(--mag)}.pc.IndiaEdge{border-color:var(--green)}.pc.All{border-color:#C7B89F}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--slate);margin-bottom:10px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-dialog{margin:auto;border:0;border-radius:14px;padding:22px 24px;max-width:620px;width:92vw;color:var(--navy)}
-dialog::backdrop{background:rgba(18,35,61,.55)}
-dialog h3{font-family:Fraunces,serif;font-size:22px;margin-bottom:8px}
-dialog dl{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:13px}dialog dt{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;color:var(--slate);padding-top:2px}
-.gap li{margin:0 0 6px 18px;font-size:13px}
-@media(max-width:1100px){.tiles{grid-template-columns:repeat(2,1fr)}.g2,.g2e{grid-template-columns:1fr}.cal{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:760px){.app{grid-template-columns:1fr}nav{position:static;height:auto;display:flex;flex-wrap:wrap;padding:12px}nav .brand,nav .tag,nav .foot{display:none}nav button{width:auto;padding:8px 12px;border-left:0;border-bottom:3px solid transparent}nav button.on{border-bottom-color:var(--orange)}main{padding:16px}}
+#gate{position:fixed;inset:0;background:var(--ink);display:grid;place-items:center;z-index:50;padding:20px}
+#gate form{background:var(--white);border-radius:14px;padding:30px;width:min(360px,100%)}
+#gate h1{font-size:26px}#gate p{color:var(--slate);font-size:14px;margin:4px 0 16px}
+#gate input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:10px}
+#gate .err{color:var(--down);font-size:13px;min-height:18px}
+.btn{background:var(--ink);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.wide{width:100%}
+
+/* shell */
+.shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+aside{background:var(--ink);color:#DCE3EC;padding:24px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-family:Fraunces,serif;font-size:21px;color:#fff;padding:0 10px}
+.brand b{color:var(--now);font-weight:600}
+.brand small{display:block;font:13px "IBM Plex Sans";color:#93A1B3;margin-top:2px}
+nav{margin-top:26px;display:grid;gap:2px}
+nav .grp{font-size:12px;color:#7F8DA0;padding:16px 10px 6px}
+nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;color:#DCE3EC;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:14px}
+nav button:hover{background:#1C3150}
+nav button[aria-current=page]{background:#fff;color:var(--ink);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:#5B6B80;flex:none}
+.dot.Scale{background:#58B38A}.dot.Hold{background:#C9B48A}.dot.Fix{background:#F0709F}
+main{padding:28px clamp(18px,3vw,44px) 60px;min-width:0;max-width:1280px}
+.topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.topbar .week{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:9px;padding:4px 6px 4px 12px;font-size:14px}
+.topbar select{border:0;background:transparent;font-weight:600;padding:4px;cursor:pointer}
+.src{margin-left:auto;font-size:13px;color:var(--slate);display:flex;align-items:center;gap:8px}
+.src i{width:8px;height:8px;border-radius:50%;background:#C9B48A;display:inline-block}
+.src i.live{background:var(--up)}
+.page{display:none}.page.on{display:block}
+
+/* summary hero */
+.verdict{padding:6px 0 26px;border-bottom:1px solid var(--line);margin-bottom:26px}
+.verdict .when{font-size:14px;color:var(--slate)}
+.verdict h1{font-size:clamp(26px,3vw,38px);line-height:1.18;margin-top:8px;max-width:30ch;font-weight:400}
+.verdict h1 strong{font-weight:600}
+.read{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-bottom:34px}
+.read h3{font-size:17px;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.read h3::before{content:"";width:12px;height:12px;border-radius:3px;background:var(--c)}
+.read ul{list-style:none;display:grid;gap:10px}
+.read li{font-size:14.5px;line-height:1.45;padding-left:12px;border-left:2px solid var(--c)}
+.read li small{display:block;color:var(--slate);font-size:12.5px;margin-top:2px}
+.read .none{color:var(--slate);font-size:14px}
+
+/* tiles */
+.sechead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.sechead h2{font-size:22px}
+.legend{font-size:13px;color:var(--slate);display:flex;gap:14px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:8px;border-radius:2px;display:inline-block}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tile{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px;text-align:left;cursor:pointer;display:grid;gap:12px;transition:border-color .15s}
+.tile:hover{border-color:#C9BFAE}
+.tile header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tile header b{font-family:Fraunces,serif;font-size:19px;font-weight:600}
+.tag{font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px}
+.tag.Scale{background:#E3F1EA;color:var(--up)}.tag.Hold{background:#F4EEE0;color:#7A6230}.tag.Fix{background:#FBE4EE;color:var(--down)}.tag.Wait{background:var(--soft);color:var(--slate)}
+.big{display:flex;align-items:baseline;gap:8px}
+.big .n{font-family:Fraunces,serif;font-size:30px;line-height:1}
+.big .l{font-size:13px;color:var(--slate)}
+.delta{font-size:13px;font-weight:600}.delta.up{color:var(--up)}.delta.down{color:var(--down)}.delta.flat{color:var(--slate)}
+.cmp{display:grid;gap:5px}
+.cmp .row{display:grid;grid-template-columns:86px 1fr 52px;align-items:center;gap:8px;font-size:12.5px;color:var(--slate)}
+.cmp .bar{height:9px;background:var(--soft);border-radius:5px;overflow:hidden}
+.cmp .bar i{display:block;height:100%;border-radius:5px}
+.cmp .v{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.tile .say{font-size:13.5px;line-height:1.4;color:var(--ink)}
+.tile .open{font-size:13px;color:var(--now);font-weight:600}
+.tag small{font-weight:400}
+
+/* deep dive */
+.dhead{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.dhead h1{font-size:34px}
+.dhead .tag{margin-top:10px}
+.dsay{font-family:Fraunces,serif;font-size:20px;line-height:1.35;max-width:52ch;margin:6px 0 22px;font-weight:400}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:12px;background:var(--white);margin-bottom:18px}
+.kpi{padding:16px 18px;border-right:1px solid var(--line)}.kpi:last-child{border-right:0}
+.kpi .l{font-size:13px;color:var(--slate)}
+.kpi .n{font-family:Fraunces,serif;font-size:28px;margin:2px 0}
+.kpi .was{font-size:12.5px;color:var(--slate)}
+.grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px}
+.panel{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:18px}
+.panel h3{font-size:17px}.panel .sub{font-size:13px;color:var(--slate);margin:2px 0 12px}
+.chart{position:relative;height:250px}
+.latest{display:grid;gap:10px}
+.latest .t{font-size:16px;font-weight:600;line-height:1.35}
+.latest .meta{font-size:13px;color:var(--slate)}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.vs div{background:var(--soft);border-radius:9px;padding:10px 12px}
+.vs .l{font-size:12.5px;color:var(--slate)}.vs .n{font-family:Fraunces,serif;font-size:22px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:500;color:var(--slate);font-size:13px;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.idx{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.idx .b{width:70px;height:7px;background:var(--soft);border-radius:4px;position:relative}
+.idx .b i{position:absolute;top:0;bottom:0;border-radius:4px}
+.idx .b::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--then)}
+td a,.latest .t a{color:var(--ink)}
+.empty{color:var(--slate);font-size:14px;padding:12px 0}
+.notes ul{list-style:none;display:grid;gap:10px}
+.notes li{font-size:14px;padding-left:12px;border-left:2px solid var(--c)}
+
+/* plan + health + settings */
+.plan{display:grid;gap:10px}
+.prow{display:grid;grid-template-columns:120px 1fr 140px;gap:14px;align-items:center;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.prow .d{font-weight:600;font-size:14px}.prow .d small{display:block;color:var(--slate);font-weight:400}
+.prow .h{font-size:15px}.prow .h small{display:block;font-size:13px;color:var(--slate)}
+.st{justify-self:end;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--soft);color:var(--slate)}
+.st.posted{background:#E3F1EA;color:var(--up)}.st.held{background:#FBE4EE;color:var(--down)}.st.scripted,.st.qc{background:#E7ECF3;color:var(--ink)}
+.field{display:grid;gap:6px;margin-bottom:12px}.field label{font-size:13px;color:var(--slate)}
+.field input{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.row-btns{display:flex;gap:8px;flex-wrap:wrap}
+.note{font-size:13px;color:var(--slate)}
+.gaps li{margin:0 0 8px 18px;font-size:14px}
+@media(max-width:1080px){.tiles{grid-template-columns:repeat(2,1fr)}.read{grid-template-columns:1fr;gap:20px}.grid2{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kpi:nth-child(2){border-right:0}.kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+@media(max-width:720px){.shell{grid-template-columns:1fr}aside{position:static;height:auto;padding:14px}nav{display:flex;flex-wrap:wrap;margin-top:12px}nav .grp{display:none}nav button{width:auto}.tiles{grid-template-columns:1fr}.prow{grid-template-columns:1fr}.st{justify-self:start}main{padding:18px 14px 40px}}
 </style></head>
 <body>
-<div id="gate"><div class="box">
-  <h1>What the <span>AI!?</span></h1><div class="note">Performance dashboard. Enter the passcode.</div>
-  <input id="pass" type="password" autocomplete="current-password" placeholder="Passcode">
-  <div class="err" id="perr"></div>
-  <button class="btn" id="enter" style="width:100%">Open dashboard</button>
-</div></div>
+<div id="gate"><form id="gateForm">
+  <h1>What the AI!?</h1><p>Weekly performance read. Enter the passcode to open it.</p>
+  <input id="pass" type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode">
+  <div class="err" id="perr" role="alert"></div>
+  <button class="btn wide" type="submit">Open the dashboard</button>
+</form></div>
 
-<div class="app" id="app" style="display:none">
-<nav>
-  <div class="brand">What the <span>AI!?</span></div>
-  <div class="tag">Human + AI · Performance</div>
-  <button data-p="overview" class="on">Overview</button>
-  <button data-p="channels">Channels</button>
-  <button data-p="content">Content</button>
-  <button data-p="plan">Plan and calendar</button>
-  <button data-p="lanes">Lanes and formats</button>
-  <button data-p="health">Machine health</button>
-  <button data-p="learn">Experiments and decisions</button>
-  <button data-p="data">Data and settings</button>
-  <div class="foot">Draw the line.<br>Claude makes · Grok posts</div>
-</nav>
+<div class="shell" id="app" hidden>
+<aside>
+  <div class="brand">What the <b>AI!?</b><small>Weekly read for Kunal</small></div>
+  <nav id="nav"></nav>
+</aside>
 <main>
-  <div class="top"><h2 id="ptitle">Overview</h2><div class="asof"><span id="srcBadge" class="badge b-seed">seed</span><br><span id="asof"></span></div></div>
-
-  <section class="page on" id="p-overview">
-    <div class="tiles" id="tiles"></div>
-    <div class="g2">
-      <div class="card"><h3>Followers</h3><div class="sub">Daily counts logged by Grok at 23:00 IST (log scale)</div><div class="chart"><canvas id="cFol"></canvas></div></div>
-      <div class="card"><h3>Targets</h3><div class="sub">Latest count against this month's target and the 31 May goal</div><div id="targets"></div></div>
-    </div>
-    <div class="g2">
-      <div class="card"><h3>Next up</h3><div class="sub">The next pieces in the plan, with live status</div><div id="nextup"></div></div>
-      <div class="card"><h3>This week at a glance</h3><div class="sub">Plan vs posted, last 7 days</div><div id="weekglance"></div></div>
-    </div>
-  </section>
-
-  <section class="page" id="p-channels">
-    <div class="card"><h3>Channel scorecard</h3><div class="sub">Latest followers, change over 7 and 28 days, posts and reach in the last 7 days</div><div id="chanTable"></div></div>
-    <div class="g2e">
-      <div class="card"><h3>Reach by channel, last 28 days</h3><div class="sub">Sum of 48 h reach (or views) per day</div><div class="chart"><canvas id="cChanReach"></canvas></div></div>
-      <div class="card"><h3>Benchmarks from before the restart</h3><div class="sub">What the old pipeline achieved. The bar to beat.</div><div id="history"></div></div>
-    </div>
-  </section>
-
-  <section class="page" id="p-content">
-    <div class="card"><h3>Reach and score per day</h3><div class="sub">Bars: reach or views. Line: average score per 1,000 reach = (shares x3 + saves x2 + follows x5 + comments) / reach x 1000</div><div class="chart"><canvas id="cReach"></canvas></div></div>
-    <div class="card"><h3>Every post</h3><div class="sub">Click a column to sort. Score uses 7 d numbers when present, else 48 h.</div>
-      <div class="filters"><input type="search" id="fq" placeholder="Search titles"><select id="fplat"></select><select id="flane"></select><select id="ffmt"></select><select id="fdays"><option value="7">Last 7 days</option><option value="28" selected>Last 28 days</option><option value="9999">All time</option></select><button class="btn ghost" id="csv">Export CSV</button></div>
-      <div id="postTable" style="overflow:auto"></div></div>
-  </section>
-
-  <section class="page" id="p-plan">
-    <div class="card"><h3 id="planTitle">Plan</h3><div class="sub" id="planSub"></div>
-      <div class="legend"><span><i style="background:var(--navy)"></i>Hardware</span><span><i style="background:var(--orange)"></i>Software</span><span><i style="background:var(--mag)"></i>Human + AI</span><span><i style="background:var(--green)"></i>India Edge</span><span><i style="background:#C7B89F"></i>All channels</span><span>Status: <span class="pill planned">planned</span> <span class="pill scripted">scripted</span> <span class="pill posted">posted</span> <span class="pill held">held</span></span></div>
-      <div id="cal"></div></div>
-    <div class="g2e">
-      <div class="card"><h3>Lane mix in the plan</h3><div class="sub">Reels only, against the rulebook shares</div><div id="planMix"></div></div>
-      <div class="card"><h3>Facts to verify</h3><div class="sub">Pieces in the next 3 days and what must be checked before scripting</div><div id="verify"></div></div>
-    </div>
-  </section>
-
-  <section class="page" id="p-lanes">
-    <div class="g2e">
-      <div class="card"><h3>Lanes, last 28 days</h3><div class="sub">Signal is a suggestion. Claude decides in the Sunday review.</div><div id="lanes"></div></div>
-      <div class="card"><h3>Formats, last 28 days</h3><div class="sub">Average score and saves per 1,000 reach by format</div><div id="formats"></div></div>
-    </div>
-    <div class="card"><h3>Best and worst</h3><div class="sub">Top and bottom 5 scored posts, last 28 days</div><div id="topbottom"></div></div>
-  </section>
-
-  <section class="page" id="p-health">
-    <div class="tiles" id="htiles"></div>
-    <div class="g2e">
-      <div class="card"><h3>Grok QC, last 14 days</h3><div class="sub">Gate G results per day</div><div class="chart"><canvas id="cQC"></canvas></div></div>
-      <div class="card"><h3>Incidents</h3><div class="sub">Open first</div><div id="incidents"></div></div>
-    </div>
-  </section>
-
-  <section class="page" id="p-learn">
-    <div class="card"><h3>Experiments</h3><div class="sub">From the tracker's Experiments tab</div><div id="exps"></div></div>
-    <div class="card"><h3>Decisions log</h3><div class="sub">From the tracker's Decisions tab</div><div id="decs"></div></div>
-  </section>
-
-  <section class="page" id="p-data">
-    <div class="g2e">
-      <div class="card"><h3>Live data source</h3><div class="sub">The dashboard reads the tracker Google Sheet every 10 minutes. Grok writes to that sheet daily.</div>
-        <input type="text" id="sheetId" placeholder="Google Sheet link or ID" style="width:100%;margin-bottom:8px">
-        <div class="filters"><button class="btn" id="load">Connect sheet</button><button class="btn ghost" id="pick">Load tracker .xlsx</button><button class="btn ghost" id="useSeed">Use seed data only</button><input type="file" id="file" accept=".xlsx" style="display:none"></div>
-        <p class="note" id="status"></p>
-        <p class="note" style="margin-top:8px">The sheet must be shared as "Anyone with the link can view". Tabs read: Content_Log, Daily_Followers, Targets, Incidents, Grok_QC, Experiments, Decisions, Plan_Status.</p></div>
-      <div class="card"><h3>Data still missing</h3><div class="sub">Grok backfills these (see the backfill brief)</div><ul class="gap" id="gaps"></ul></div>
-    </div>
-    <div class="card"><h3>How the numbers are built</h3><div class="sub">Definitions</div>
-      <table><tr><th>Measure</th><th>Definition</th></tr>
-      <tr><td>Score</td><td>(shares x3 + saves x2 + follows x5 + comments) / reach x 1000. 7 d numbers when logged, else 48 h.</td></tr>
-      <tr><td>On time</td><td>Posted within 10 minutes of the planned slot.</td></tr>
-      <tr><td>India share</td><td>Reels marked India = Y over a rolling 28 days. Target 15 to 20%.</td></tr>
-      <tr><td>Lane signal</td><td>Scale: top third by score. Cut: bottom third and skip rate over 40%. Hold: the rest. Wait: fewer than 4 posts.</td></tr>
-      <tr><td>Seed data</td><td>Numbers read from public profiles and past reports on 23 Nov 2026. Replaced by live data once the sheet is connected.</td></tr></table></div>
-  </section>
-</main></div>
-
-<dialog id="dlg"><h3 id="dTitle"></h3><dl id="dBody"></dl><div style="margin-top:16px;text-align:right"><button class="btn" onclick="document.getElementById('dlg').close()">Close</button></div></dialog>
+  <div class="topbar">
+    <div class="week"><span>Week of</span><select id="weekSel" aria-label="Choose week"></select></div>
+    <div class="src"><i id="srcDot"></i><span id="srcText"></span></div>
+  </div>
+  <section class="page on" id="p-summary"></section>
+  <section class="page" id="p-medium"></section>
+  <section class="page" id="p-plan"></section>
+  <section class="page" id="p-health"></section>
+  <section class="page" id="p-settings"></section>
+</main>
+</div>
 
 <script>
-/* ---------- config ---------- */
-const PASS_HASH="27ddb1c5eb2c187072abbbd13672621f866472f3599594900d73f62e5ed843dd"; // SHA-256 of the passcode
-const DEFAULT_SHEET=""; // put the tracker Google Sheet ID here to auto-connect for every visitor
-const TABS=["Content_Log","Daily_Followers","Targets","Incidents","Grok_QC","Experiments","Decisions","Plan_Status"];
-const CH=[["instagram","Instagram","#E4572E"],["youtube_subs","YouTube","#12233D"],["linkedin","LinkedIn","#536173"],["x","X","#2E6B4F"],["facebook","Facebook","#C7B89F"],["substack","Newsletter","#DF3C90"]];
-const LANES=[["Hardware",.35,"35%"],["Software",.25,"25%"],["Human + AI",.20,"20%"],["India Edge",.175,"15 to 20%"]];
+/* ---------- settings ---------- */
+const PASS_HASH="27ddb1c5eb2c187072abbbd13672621f866472f3599594900d73f62e5ed843dd";
+const DEFAULT_SHEET="";
+const TABS=["Content_Log","Daily_Followers","Targets","Incidents","Grok_QC","Insights","Plan_Status"];
+const MEDIA=[
+ {id:"linkedin",name:"LinkedIn",fol:"linkedin",plat:["linkedin"],unit:"impressions"},
+ {id:"instagram",name:"Instagram",fol:"instagram",plat:["instagram"],unit:"reach"},
+ {id:"youtube",name:"YouTube Shorts",fol:"youtube_subs",plat:["youtube"],unit:"views"},
+ {id:"facebook",name:"Facebook",fol:"facebook",plat:["facebook"],unit:"reach"},
+ {id:"x",name:"X",fol:"x",plat:["x"],unit:"impressions"},
+ {id:"newsletter",name:"Newsletter",fol:"substack",plat:["substack","newsletter","linkedin_newsletter"],unit:"opens"}];
+const COL={now:"#E4572E",then:"#AEB7C4",ink:"#12233D",up:"#2E6B4F",down:"#C2306F"};
+
 /* ---------- helpers ---------- */
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num=v=>{if(v===undefined||v===null||v===""||v==="n/a")return null;const n=parseFloat(String(v).replace(/,/g,""));return isNaN(n)?null:n};
-const dstr=v=>{if(v instanceof Date)return new Date(v.getTime()+12*3600e3).toISOString().slice(0,10);if(typeof v==="number"){return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10)}return String(v||"").slice(0,10)};
-const fmt=n=>n===null||n===undefined||isNaN(n)?"n/a":Math.round(n).toLocaleString("en-IN");
-const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+const dstr=v=>{if(v instanceof Date)return new Date(v.getTime()+12*3600e3).toISOString().slice(0,10);if(typeof v==="number")return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);return String(v||"").slice(0,10)};
+const fmt=n=>n==null||isNaN(n)?"n/a":Math.round(n).toLocaleString("en-IN");
+const fmt1=n=>n==null||isNaN(n)?"n/a":n.toFixed(1);
 const todayIST=()=>new Date(Date.now()+5.5*3600e3).toISOString().slice(0,10);
-const addDays=(d,n)=>new Date(new Date(d+"T00:00:00Z").getTime()+n*864e5).toISOString().slice(0,10);
-const laneCls=l=>String(l||"All").replace(/[^A-Za-z]/g,"");
-function reachOf(r){return num(r.reach_7d)??num(r.reach_48h)??num(r.views)}
-function score(r){for(const s of["7d","48h"]){const reach=num(r["reach_"+s]);if(reach)return((num(r["shares_"+s])||0)*3+(num(r["saves_"+s])||0)*2+(num(r["follows_"+s])||0)*5+(num(r["comments_"+s])||0))/reach*1000}return null}
+const add=(d,n)=>new Date(new Date(d+"T00:00:00Z").getTime()+n*864e5).toISOString().slice(0,10);
+const monday=d=>{const w=(new Date(d+"T00:00:00Z").getUTCDay()+6)%7;return add(d,-w)};
+const nice=d=>new Date(d+"T00:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short",timeZone:"UTC"});
+const niceDay=d=>new Date(d+"T00:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"});
+const pct=(a,b)=>a==null||b==null||!b?null:(a-b)/b*100;
+const deltaHTML=(p,suffix="")=>p==null?`<span class="delta flat">no comparison yet</span>`:`<span class="delta ${p>2?"up":p<-2?"down":"flat"}">${p>0?"+":""}${Math.round(p)}%${suffix}</span>`;
+const avg=a=>{const b=a.filter(x=>x!=null);return b.length?b.reduce((s,x)=>s+x,0)/b.length:null};
+const sum=a=>a.filter(x=>x!=null).reduce((s,x)=>s+x,0);
+const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 function parseCSV(t){const rows=[];let row=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'&&t[i+1]=='"'){f+='"';i++}else if(c=='"')q=false;else f+=c}else{if(c=='"')q=true;else if(c==","){row.push(f);f=""}else if(c=="\n"){row.push(f);rows.push(row);row=[];f=""}else if(c!="\r")f+=c}}if(f!==""||row.length){row.push(f);rows.push(row)}const h=(rows.shift()||[]).map(x=>x.trim());return rows.filter(r=>r.some(x=>x!=="")).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]])))}
-const charts={};function chart(id,cfg){charts[id]&&charts[id].destroy();Chart.defaults.font.family="IBM Plex Sans";Chart.defaults.color="#536173";charts[id]=new Chart($(id),cfg)}
+const charts={};function chart(el,cfg){if(charts[el.id])charts[el.id].destroy();Chart.defaults.font.family="IBM Plex Sans";Chart.defaults.color="#536173";charts[el.id]=new Chart(el,cfg)}
+
 /* ---------- data ---------- */
 const SEED=window.WTAI_SEED||{};
-let DATA=null,SRC="seed",timer=null;
-function merge(live){
-  const d={};for(const t of TABS)d[t]=[];
-  for(const k of Object.keys(SEED))d[k]=SEED[k];
-  if(live){for(const t of TABS){if(live[t]&&live[t].length){
-    if(t==="Daily_Followers"){const m={};[...(SEED.Daily_Followers||[]),...live[t]].forEach(r=>{const k=dstr(r.date);m[k]={...(m[k]||{}),...Object.fromEntries(Object.entries(r).filter(([a,b])=>b!==""&&b!==null)),date:k}});d[t]=Object.values(m)}
-    else if(t==="Content_Log"){d[t]=[...(SEED.Content_Log||[]),...live[t]]}
-    else d[t]=live[t]}}}
+let D=null,SRC="seed",timer=null,WEEK=null,CUR="summary";
+function reachOf(r){return num(r.reach_7d)??num(r.reach_48h)??num(r.impressions)??num(r.views)}
+function scoreOf(r){for(const s of["7d","48h"]){const re=num(r["reach_"+s]);if(re)return((num(r["shares_"+s])||0)*3+(num(r["saves_"+s])||0)*2+(num(r["follows_"+s])||0)*5+(num(r["comments_"+s])||0))/re*1000}return null}
+function engOf(r){for(const s of["7d","48h"]){const re=num(r["reach_"+s]);if(re){const e=(num(r["shares_"+s])||0)+(num(r["saves_"+s])||0)+(num(r["comments_"+s])||0)+(num(r["likes_"+s])||0);return e/re*100}}return null}
+function build(live,only){
+  const d={};if(!only)for(const k of Object.keys(SEED))d[k]=SEED[k];if(only)d.LinkedInPlan=SEED.LinkedInPlan;for(const t of TABS)d[t]=d[t]||[];
+  if(live){for(const t of TABS){if(!live[t]||!live[t].length)continue;
+    if(only){d[t]=live[t];continue}
+    if(t==="Daily_Followers"){const m={};[...(SEED.Daily_Followers||[]),...live[t]].forEach(r=>{const k=dstr(r.date);m[k]={...(m[k]||{}),...Object.fromEntries(Object.entries(r).filter(([a,b])=>b!==""&&b!=null)),date:k}});d[t]=Object.values(m)}
+    else if(t==="Content_Log"){const urls=new Set(live[t].map(r=>r.url).filter(Boolean));d[t]=[...(SEED.Content_Log||[]).filter(r=>!urls.has(r.url)),...live[t]]}
+    else if(t==="Insights"){d[t]=[...(SEED.Insights||[]),...live[t]]}
+    else d[t]=live[t]}}
   d.Daily_Followers=(d.Daily_Followers||[]).map(r=>({...r,date:dstr(r.date)})).filter(r=>r.date&&r.date<=todayIST()).sort((a,b)=>a.date<b.date?-1:1);
-  d.Content_Log=(d.Content_Log||[]).filter(r=>r.content_id&&!String(r.title||"").startsWith("EXAMPLE")).map(r=>({...r,date:dstr(r.date),platform:String(r.platform||"").toLowerCase(),s:score(r),reach:reachOf(r)}));
+  d.Content_Log=(d.Content_Log||[]).filter(r=>(r.content_id||r.url)&&!String(r.title||"").startsWith("EXAMPLE")).map(r=>({...r,date:dstr(r.date),platform:String(r.platform||"").toLowerCase(),reach:reachOf(r),score:scoreOf(r),eng:engOf(r)})).filter(r=>r.date<=todayIST());
+  d.Insights=(d.Insights||[]).map(r=>({...r,date:dstr(r.date)}));
   return d}
 async function loadSheet(idOrUrl,quiet){
-  const m=String(idOrUrl||"").match(/\/d\/([a-zA-Z0-9-_]+)/);const id=m?m[1]:String(idOrUrl||"").trim();
-  if(!id){status("Paste the tracker's Google Sheet link first.");return}
-  status("Loading from Google Sheets...");
+  const m=String(idOrUrl||"").match(/\/d\/([a-zA-Z0-9-_]+)/);const id=m?m[1]:String(idOrUrl||"").trim();if(!id)return;
   try{const live={};for(const t of TABS){try{const r=await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(t)}`);live[t]=r.ok?parseCSV(await r.text()):[]}catch(e){live[t]=[]}}
-    if(!live.Content_Log.length&&!live.Daily_Followers.length)throw new Error("no rows found");
-    store.set("wtai_sheet",id);SRC="live";DATA=merge(live);renderAll();status(`Live from Google Sheets. Refreshed ${new Date().toLocaleString("en-IN")}.`);
+    if(!live.Content_Log.length&&!live.Daily_Followers.length)throw new Error("the sheet has no rows yet");
+    store.set("wtai_sheet",id);SRC="live";D=build(live);setWeeks();render();
     clearInterval(timer);timer=setInterval(()=>loadSheet(id,true),600000);
-  }catch(e){if(!quiet)status("Could not read the sheet. Share it as 'Anyone with the link can view', or load the .xlsx. ("+e.message+")")}}
-function loadFile(file){const rd=new FileReader();rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});const live={};for(const t of TABS){const ws=wb.Sheets[t];live[t]=ws?XLSX.utils.sheet_to_json(ws,{defval:""}):[]}SRC="file";DATA=merge(live);renderAll();status(`From ${file.name}, loaded ${new Date().toLocaleString("en-IN")}.`)}catch(err){status("Could not read that file: "+err.message)}};rd.readAsArrayBuffer(file)}
-function status(t){$("status").textContent=t}
-/* ---------- derived ---------- */
-function folLast(k){const f=DATA.Daily_Followers;for(let i=f.length-1;i>=0;i--){const v=num(f[i][k]);if(v!==null)return{v,date:f[i].date}}return null}
-function folAgo(k,days){const l=folLast(k);if(!l)return null;const t=addDays(l.date,-days);const f=DATA.Daily_Followers;for(let i=f.length-1;i>=0;i--){if(f[i].date<=t){const v=num(f[i][k]);if(v!==null)return v}}return null}
-function planRows(){const p=(DATA.Plan&&DATA.Plan.pieces)||[];const st={};(DATA.Plan_Status||[]).forEach(r=>{if(r.id)st[r.id]=r});DATA.Content_Log.forEach(r=>{if(r.plan_id)st[r.plan_id]=st[r.plan_id]||{status:"posted",content_id:r.content_id}});return p.map(r=>({...r,...(st[r.id]?{status:st[r.id].status||r.status,note:st[r.id].note||""}:{})}))}
-function reels(days){const from=addDays(todayIST(),-days);return DATA.Content_Log.filter(r=>r.platform==="instagram"&&r.date>=from)}
+  }catch(e){if(!quiet)msg("Couldn't read the sheet: "+e.message+". Share it as 'Anyone with the link can view', or load the .xlsx file.")}}
+function loadFile(file){const rd=new FileReader();rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});const live={};for(const t of TABS){const ws=wb.Sheets[t];live[t]=ws?XLSX.utils.sheet_to_json(ws,{defval:""}):[]}SRC="file:"+file.name;D=build(live);setWeeks();render()}catch(err){msg("Couldn't read that file: "+err.message)}};rd.readAsArrayBuffer(file)}
+function msg(t){const el=$("setMsg");if(el)el.textContent=t}
+
+/* ---------- metrics ---------- */
+function posts(m,from,to){return D.Content_Log.filter(r=>m.plat.includes(r.platform)&&r.date>=from&&r.date<=to)}
+function folAt(k,date){let v=null,dd=null;for(const r of D.Daily_Followers){if(r.date>date)break;const n=num(r[k]);if(n!=null){v=n;dd=r.date}}return v==null?null:{v,date:dd}}
+function stats(m){
+  const ws=WEEK,we=add(WEEK,6),ls=add(WEEK,-7),le=add(WEEK,-1);
+  const tw=posts(m,ws,we),lw=posts(m,ls,le);
+  const all=D.Content_Log.filter(r=>m.plat.includes(r.platform)&&r.date<=we).sort((a,b)=>(a.date+(a.slot_ist||""))<(b.date+(b.slot_ist||""))?-1:1);
+  const latest=all[all.length-1]||null;
+  const fNow=folAt(m.fol,we),fThen=folAt(m.fol,le);
+  const s={m,tw,lw,latest,
+    fNow:fNow?fNow.v:null,fDate:fNow?fNow.date:null,fChange:fNow&&fThen&&fThen.date!==fNow.date?fNow.v-fThen.v:null,
+    reachTW:avg(tw.map(r=>r.reach)),reachLW:avg(lw.map(r=>r.reach)),
+    scoreTW:avg(tw.map(r=>r.score)),scoreLW:avg(lw.map(r=>r.score)),
+    engTW:avg(tw.map(r=>r.eng)),engLW:avg(lw.map(r=>r.eng)),
+    totTW:sum(tw.map(r=>r.reach)),totLW:sum(lw.map(r=>r.reach))};
+  // compare latest post against last week's average; if no posts this week, compare last week against the week before
+  s.base=s.reachLW;if(s.base==null){const pw=posts(m,add(WEEK,-14),add(WEEK,-8));s.base=avg(pw.map(r=>r.reach));s.baseLabel="week before"}else s.baseLabel="last week's average";
+  s.latestVs=latest&&latest.reach!=null?pct(latest.reach,s.base):null;
+  const change=pct(s.reachTW,s.reachLW)??(tw.length?null:null);
+  s.reachChange=change;
+  let a=s.reachTW,b=s.reachLW,sa=s.scoreTW,sb=s.scoreLW;s.judged="this week";
+  if(!tw.length&&lw.length){const pw=posts(m,add(WEEK,-14),add(WEEK,-8));a=s.reachLW;b=avg(pw.map(r=>r.reach));sa=s.scoreLW;sb=avg(pw.map(r=>r.score));s.judged="last week"}
+  s.vReach=pct(a,b);s.vScore=pct(sa,sb);
+  if(!tw.length&&!lw.length)s.verdict="Wait";
+  else if(s.vReach==null&&s.vScore==null)s.verdict="Hold";
+  else if((s.vReach??0)<=-20)s.verdict="Fix";
+  else if((s.vReach??0)>=20||(s.vScore??0)>=25)s.verdict="Scale";
+  else s.verdict="Hold";
+  s.say=sayFor(s);return s}
+function sayFor(s){
+  const n=s.m.name,u=s.m.unit;
+  if(!s.latest)return `No ${n} posts logged yet. Grok adds them 48 hours after each post.`;
+  if(!s.tw.length){const gap=Math.round((new Date(add(WEEK,6))-new Date(s.latest.date))/864e5);
+    return `Nothing posted this week yet. The last post went out on ${niceDay(s.latest.date)}${s.reachLW!=null?` and last week averaged ${fmt(s.reachLW)} ${u} a post`:""}.`}
+  if(s.reachChange==null)return `${s.tw.length} post${s.tw.length>1?"s":""} this week, averaging ${fmt(s.reachTW)} ${u}. First week to compare against.`;
+  const dir=s.reachChange>=0?"up":"down";
+  return `${s.tw.length} post${s.tw.length>1?"s":""} this week, averaging ${fmt(s.reachTW)} ${u}, ${dir} ${Math.abs(Math.round(s.reachChange))}% on last week.`}
+
 /* ---------- render ---------- */
-function renderAll(){
-  $("srcBadge").className="badge "+(SRC==="seed"?"b-seed":"b-live");$("srcBadge").textContent=SRC==="seed"?"seed data":SRC==="file"?"from file":"live";
-  $("asof").textContent=SRC==="seed"?"Seed as of "+new Date(SEED.asof).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})+" IST":"Updated "+new Date().toLocaleString("en-IN");
-  overview();channels();content();plan();lanes();health();learn();
-  $("gaps").innerHTML=(SEED.Gaps||[]).map(g=>`<li>${esc(g)}</li>`).join("")}
-function tile(l,v,d,c){return`<div class="tile"><div class="l">${l}</div><div class="v">${v}</div><div class="d ${c||""}">${d}</div></div>`}
-function delta(k,days){const l=folLast(k),p=folAgo(k,days);if(!l)return["n/a","not logged yet",""];if(p===null)return[fmt(l.v),"as of "+l.date,""];const dd=l.v-p;return[fmt(l.v),`${dd>=0?"+":""}${fmt(dd)} in ${days} days`,dd>=0?"up":"down"]}
-function overview(){
-  const T=[];for(const[k,l]of[["instagram","Instagram followers"],["x","X followers"],["youtube_subs","YouTube subscribers"],["linkedin","LinkedIn followers"]]){const[v,d,c]=delta(k,7);T.push(tile(l,v,d,c))}
-  const r7=reels(7),r28=reels(28),sc=r28.map(r=>r.s).filter(x=>x!==null);
-  const ot=r7.filter(r=>r.on_time!==undefined&&r.on_time!=="");const ontime=ot.length?ot.filter(r=>String(r.on_time).toUpperCase()==="Y").length/ot.length:null;
-  T.push(tile("Reels on time, 7 d",ontime===null?"n/a":Math.round(ontime*100)+"%",`${r7.length} reels logged · target 14 a week`,ontime===null?"":ontime>=.95?"up":"down"));
-  const views7=r7.map(r=>r.reach).filter(x=>x!==null);T.push(tile("Avg reach per reel, 7 d",views7.length?fmt(views7.reduce((a,b)=>a+b,0)/views7.length):"n/a","benchmark before restart: 130",views7.length?(views7.reduce((a,b)=>a+b,0)/views7.length>=130?"up":"down"):""));
-  T.push(tile("Avg score, 28 d",sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):"n/a","per 1,000 reach",""));
-  const ind=r28.filter(r=>r.format!=="legacy");const india=ind.length?ind.filter(r=>String(r.india).toUpperCase()==="Y").length/ind.length:null;
-  T.push(tile("India share, 28 d",india===null?"n/a":Math.round(india*100)+"%","target 15 to 20%",india===null?"":(india>=.15&&india<=.2?"up":"down")));
-  $("tiles").innerHTML=T.join("");
-  const f=DATA.Daily_Followers;
-  chart("cFol",{type:"line",data:{labels:f.map(r=>r.date),datasets:CH.filter(([k])=>f.some(r=>num(r[k])!==null)).map(([k,n,c])=>({label:n,data:f.map(r=>num(r[k])),borderColor:c,backgroundColor:c,spanGaps:true,tension:.25,pointRadius:3,borderWidth:2}))},options:{maintainAspectRatio:false,scales:{y:{type:"logarithmic"}},plugins:{legend:{position:"bottom"}}}});
-  const months=["M1 31 Dec","M2 31 Jan","M3 28 Feb","M4 31 Mar","M5 30 Apr","M6 31 May"],ends=["2026-12-31","2027-01-31","2027-02-28","2027-03-31","2027-04-30","2027-05-31"];let mi=ends.findIndex(e=>todayIST()<=e);if(mi<0)mi=5;
-  const names={instagram:"Instagram",youtube_subs:"YouTube",x:"X",substack:"Newsletter",linkedin:"LinkedIn",facebook:"Facebook"};
-  $("targets").innerHTML=(DATA.Targets||[]).map(t=>{const l=folLast(t.channel);const tv=num(t[months[mi]]),fin=num(t["M6 31 May"]);const cur=l?l.v:null;const pct=cur!==null&&tv?Math.min(1,cur/tv):0;return`<div class="trow"><div class="r"><b>${names[t.channel]||t.channel}</b><span class="mono" style="font-size:12px">${fmt(cur)} / ${fmt(tv)} by ${months[mi].slice(3)} · ${fmt(fin)} by 31 May</span></div><div class="bar"><i style="width:${pct*100}%"></i></div></div>`}).join("")||`<p class="empty">No targets.</p>`;
-  const pr=planRows(),now=todayIST();const next=pr.filter(r=>r.date>=now&&r.kind!=="line").slice(0,6);
-  $("nextup").innerHTML=next.length?`<table><tr><th>When</th><th>Piece</th><th>Fmt</th><th>Status</th></tr>${next.map(r=>`<tr onclick="showPiece('${r.id}')" style="cursor:pointer"><td class="mono" style="white-space:nowrap">${r.day} ${r.date.slice(8)} · ${r.slot_ist}</td><td>${esc(r.hook)}<div class="note">${esc(r.channels)} · ${esc(r.lane)}</div></td><td>${r.format}</td><td><span class="pill ${r.status}">${r.status}</span></td></tr>`).join("")}</table>`:`<p class="empty">No upcoming pieces in the loaded plan.</p>`;
-  const wk=pr.filter(r=>r.date>=addDays(now,-6)&&r.date<=now);const by=s=>wk.filter(r=>r.status===s).length;
-  $("weekglance").innerHTML=`<table><tr><th>Measure</th><th class="num">Count</th></tr><tr><td>Planned pieces, last 7 days</td><td class="num">${wk.length}</td></tr><tr><td>Posted</td><td class="num up">${by("posted")}</td></tr><tr><td>Held</td><td class="num ${by("held")?"down":""}">${by("held")}</td></tr><tr><td>Still planned or scripted</td><td class="num">${by("planned")+by("scripted")+by("qc")}</td></tr><tr><td>Posts logged (all channels)</td><td class="num">${DATA.Content_Log.filter(r=>r.date>=addDays(now,-6)).length}</td></tr></table><p class="note" style="margin-top:8px">Last old-pipeline post: ${(()=>{const l=DATA.Content_Log.map(r=>r.date).sort().pop();return l||"n/a"})()}.</p>`}
-function channels(){
-  const now=todayIST(),plats=[["instagram","Instagram","instagram"],["youtube","YouTube","youtube_subs"],["linkedin","LinkedIn","linkedin"],["x","X","x"],["facebook","Facebook","facebook"],["substack","Newsletter","substack"]];
-  $("chanTable").innerHTML=`<table><tr><th>Channel</th><th class="num">Followers</th><th class="num">7 d</th><th class="num">28 d</th><th class="num">Posts 7 d</th><th class="num">Reach 7 d</th><th class="num">Avg score 28 d</th></tr>${plats.map(([p,n,k])=>{const l=folLast(k),a7=folAgo(k,7),a28=folAgo(k,28);const ps=DATA.Content_Log.filter(r=>r.platform===p&&r.date>=addDays(now,-6));const rs=ps.map(r=>r.reach).filter(x=>x!==null);const sc=DATA.Content_Log.filter(r=>r.platform===p&&r.date>=addDays(now,-27)&&r.s!==null).map(r=>r.s);const dd=(a)=>l&&a!==null?`<span class="${l.v-a>=0?"up":"down"}">${l.v-a>=0?"+":""}${fmt(l.v-a)}</span>`:"n/a";return`<tr><td><b>${n}</b></td><td class="num">${l?fmt(l.v):"n/a"}</td><td class="num">${dd(a7)}</td><td class="num">${dd(a28)}</td><td class="num">${ps.length}</td><td class="num">${rs.length?fmt(rs.reduce((a,b)=>a+b,0)):"n/a"}</td><td class="num">${sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):"n/a"}</td></tr>`}).join("")}</table>`;
-  const days=[];for(let i=27;i>=0;i--)days.push(addDays(now,-i));
-  chart("cChanReach",{type:"bar",data:{labels:days.map(d=>d.slice(5)),datasets:plats.map(([p,n],i)=>({label:n,data:days.map(d=>DATA.Content_Log.filter(r=>r.platform===p&&r.date===d).reduce((a,r)=>a+(r.reach||0),0)||null),backgroundColor:CH[i][2]}))},options:{maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},plugins:{legend:{position:"bottom"}}}});
-  $("history").innerHTML=`<table><tr><th>Post</th><th>Channel</th><th class="num">Result</th></tr>${(DATA.History||[]).map(h=>`<tr><td>${esc(h.title)}${h.note?`<div class="note">${esc(h.note)}</div>`:""}</td><td>${esc(h.platform)}</td><td class="num">${typeof h.value==="number"?fmt(h.value):esc(h.value)}<div class="note">${esc(h.metric)}</div></td></tr>`).join("")}</table>`}
-let sortKey="date",sortDir=-1;
-function content(){
-  const all=DATA.Content_Log;const opt=(id,label,vals)=>{const cur=$(id).value;$(id).innerHTML=`<option value="">${label}</option>`+[...new Set(vals)].filter(Boolean).sort().map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`).join("")};
-  opt("fplat","All channels",all.map(r=>r.platform));opt("flane","All lanes",all.map(r=>r.lane));opt("ffmt","All formats",all.map(r=>r.format));
-  drawPosts();
-  const from=addDays(todayIST(),-27),ig=all.filter(r=>r.date>=from),byDay={};ig.forEach(r=>{(byDay[r.date]=byDay[r.date]||{reach:0,s:[]});byDay[r.date].reach+=r.reach||0;if(r.s!==null)byDay[r.date].s.push(r.s)});const dl=Object.keys(byDay).sort();
-  chart("cReach",{data:{labels:dl,datasets:[{type:"bar",label:"Reach or views",data:dl.map(d=>byDay[d].reach),backgroundColor:"#12233D",yAxisID:"y"},{type:"line",label:"Avg score",data:dl.map(d=>byDay[d].s.length?byDay[d].s.reduce((a,b)=>a+b,0)/byDay[d].s.length:null),borderColor:"#E4572E",backgroundColor:"#E4572E",yAxisID:"y1",spanGaps:true,tension:.25}]},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true},y1:{beginAtZero:true,position:"right",grid:{drawOnChartArea:false}}}}})}
-function filtered(){const q=$("fq").value.toLowerCase(),p=$("fplat").value,l=$("flane").value,f=$("ffmt").value,from=addDays(todayIST(),-num($("fdays").value));return DATA.Content_Log.filter(r=>r.date>=from&&(!p||r.platform===p)&&(!l||r.lane===l)&&(!f||r.format===f)&&(!q||String(r.title||"").toLowerCase().includes(q)))}
-function drawPosts(){
-  const cols=[["date","Date"],["slot_ist","Slot"],["platform","Channel"],["format","Fmt"],["lane","Lane"],["title","Title"],["reach","Reach",1],["saves","Saves",1],["shares","Shares",1],["s","Score",1]];
-  const rows=filtered().map(r=>({...r,saves:num(r.saves_7d)??num(r.saves_48h),shares:num(r.shares_7d)??num(r.shares_48h)})).sort((a,b)=>{const x=a[sortKey],y=b[sortKey];if(x===y)return 0;if(x===null||x===undefined||x==="")return 1;if(y===null||y===undefined||y==="")return-1;return(x>y?1:-1)*sortDir});
-  $("postTable").innerHTML=rows.length?`<table><tr>${cols.map(([k,n,isn])=>`<th class="s ${isn?"num":""}" onclick="sortBy('${k}')">${n}${sortKey===k?(sortDir>0?" ▲":" ▼"):""}</th>`).join("")}</tr>${rows.map(r=>`<tr><td class="mono" style="white-space:nowrap">${r.date}</td><td class="mono">${esc(r.slot_ist)}</td><td>${esc(r.platform)}</td><td>${esc(r.format)}</td><td>${esc(r.lane)}</td><td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>`:esc(r.title)}</td><td class="num">${fmt(r.reach)}</td><td class="num">${fmt(r.saves)}</td><td class="num">${fmt(r.shares)}</td><td class="num">${r.s===null?"n/a":r.s.toFixed(1)}</td></tr>`).join("")}</table><p class="note" style="margin-top:8px">${rows.length} posts</p>`:`<p class="empty">No posts match these filters.</p>`}
-function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1}drawPosts()}
-function exportCSV(){const rows=filtered();if(!rows.length)return;const keys=[...new Set(rows.flatMap(Object.keys))];const csv=[keys.join(","),...rows.map(r=>keys.map(k=>`"${String(r[k]??"").replace(/"/g,'""')}"`).join(","))].join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="whattheai_posts.csv";a.click()}
+function setWeeks(){
+  const dates=[...D.Content_Log.map(r=>r.date),...D.Daily_Followers.map(r=>r.date),todayIST()];
+  const first=monday(dates.sort()[0]),last=monday(todayIST());const ws=[];for(let w=last;w>=first;w=add(w,-7))ws.push(w);
+  if(!WEEK||!ws.includes(WEEK))WEEK=ws[0];
+  $("weekSel").innerHTML=ws.map(w=>`<option value="${w}"${w===WEEK?" selected":""}>${nice(w)} to ${nice(add(w,6))}${w===last?" (this week)":""}</option>`).join("")}
+function navHTML(S){
+  const item=(id,label,dot)=>`<button data-go="${id}"${CUR===id?' aria-current="page"':""}>${dot?`<span class="dot ${dot}"></span>`:""}${label}</button>`;
+  return item("summary","Summary")+`<div class="grp">Channels</div>`+S.map(s=>item("m:"+s.m.id,s.m.name,s.verdict)).join("")+`<div class="grp">Running it</div>`+item("plan","This week's plan")+item("health","Checks and incidents")+item("settings","Data and settings")}
+function render(){
+  const S=MEDIA.map(stats);
+  $("nav").innerHTML=navHTML(S);
+  $("srcDot").className=SRC==="seed"?"":"live";
+  $("srcText").textContent=SRC==="seed"?"Starter data, read from public profiles on 23 Nov":SRC==="sample"?"Sample data for preview, not real":SRC==="live"?"Live from the tracker sheet":"From "+SRC.slice(5);
+  summary(S);plan();health();settings();
+  if(CUR.startsWith("m:"))medium(S.find(s=>"m:"+s.m.id===CUR));
+  show(CUR)}
+function show(id){CUR=id;document.querySelectorAll(".page").forEach(p=>p.classList.remove("on"));$(id.startsWith("m:")?"p-medium":"p-"+id).classList.add("on");document.querySelectorAll("nav button").forEach(b=>b.toggleAttribute("aria-current",b.dataset.go===id));if(id==="summary")Object.values(charts).forEach(c=>c.resize());window.scrollTo(0,0)}
+
+function insightsFor(medium){
+  const we=add(WEEK,6);const rows=D.Insights.filter(r=>r.date<=we&&r.date>=add(WEEK,-6)&&(!medium||r.medium===medium||r.medium==="all"));
+  const pick=t=>rows.filter(r=>String(r.type).toLowerCase()===t);
+  return{headline:pick("headline").slice(-1)[0],working:pick("working"),notworking:pick("not working"),changing:pick("changing")}}
+function autoNotes(S){
+  const w=[],n=[];
+  const was=s=>s.judged==="this week"?"on last week":"last week against the week before";
+  for(const s of S){if(s.verdict==="Scale")w.push({text:(s.vReach??0)>=20?`${s.m.name}: ${s.m.unit} per post up ${Math.round(s.vReach)}% ${was(s)}.`:`${s.m.name}: engagement score up ${Math.round(s.vScore)}% ${was(s)}.`,medium:s.m.id,auto:1});
+    if(s.verdict==="Fix")n.push({text:`${s.m.name}: ${s.m.unit} per post down ${Math.abs(Math.round(s.vReach))}% ${was(s)}.`,medium:s.m.id,auto:1});
+    if(s.latest&&!s.tw.length&&WEEK===monday(todayIST())&&s.latest.date<add(todayIST(),-3))n.push({text:`${s.m.name}: no post since ${niceDay(s.latest.date)}.`,medium:s.m.id,auto:1})}
+  const best=S.flatMap(s=>s.tw.filter(r=>r.score!=null).map(r=>({...r,mm:s.m.name}))).sort((a,b)=>b.score-a.score)[0];
+  if(best)w.unshift({text:`Best post this week: "${best.title}" on ${best.mm}, score ${fmt1(best.score)}.`,auto:1});
+  return{w,n}}
+function li(r){return`<li>${esc(r.text)}${r.auto?`<small>From this week's numbers</small>`:r.medium&&r.medium!=="all"?`<small>${esc((MEDIA.find(m=>m.id===r.medium)||{}).name||r.medium)}</small>`:""}</li>`}
+function summary(S){
+  const I=insightsFor(null),A=autoNotes(S);
+  const head=I.headline?esc(I.headline.text):autoHeadline(S);
+  const working=[...A.w,...I.working],not=[...A.n,...I.notworking],chg=I.changing;
+  const col=(t,c,arr,empty)=>`<div style="--c:${c}"><h3>${t}</h3>${arr.length?`<ul>${arr.map(li).join("")}</ul>`:`<p class="none">${empty}</p>`}</div>`;
+  $("p-summary").innerHTML=`
+   <div class="verdict"><div class="when">The read for ${nice(WEEK)} to ${nice(add(WEEK,6))}</div><h1>${head}</h1></div>
+   <div class="read">
+     ${col("What's working",COL.up,working,"Nothing stands out yet this week.")}
+     ${col("What's not",COL.down,not,"No problems flagged this week.")}
+     ${col("What we're changing",COL.now,chg,"No changes logged. Claude adds them in the Sunday review.")}
+   </div>
+   <div class="sechead"><h2>Channel by channel</h2><div class="legend"><span><i style="background:${COL.now}"></i>This week / latest</span><span><i style="background:${COL.then}"></i>Last week</span></div></div>
+   <div class="tiles">${S.map(tile).join("")}</div>`}
+function autoHeadline(S){
+  const act=S.filter(s=>s.tw.length);const up=S.filter(s=>s.verdict==="Scale"),down=S.filter(s=>s.verdict==="Fix");
+  if(!act.length)return "No posts logged for this week yet. The numbers fill in as Grok logs each post.";
+  let t=`<strong>${act.length} of ${S.length} channels</strong> posted this week.`;
+  if(up.length)t+=` ${up.map(s=>s.m.name).join(" and ")} grew reach per post.`;
+  if(down.length)t+=` ${down.map(s=>s.m.name).join(" and ")} fell back and need${down.length>1?"":"s"} a fix.`;
+  return t}
+function bars(a,b,unit){const mx=Math.max(a||0,b||0,1);return`<div class="cmp">
+  <div class="row"><span>Latest</span><div class="bar"><i style="width:${(a||0)/mx*100}%;background:${COL.now}"></i></div><span class="v">${fmt(a)}</span></div>
+  <div class="row"><span>Last week avg</span><div class="bar"><i style="width:${(b||0)/mx*100}%;background:${COL.then}"></i></div><span class="v">${fmt(b)}</span></div></div>`}
+function tile(s){
+  const lr=s.latest?s.latest.reach:null;
+  return`<button class="tile" data-go="m:${s.m.id}">
+   <header><b>${s.m.name}</b><span class="tag ${s.verdict}">${{Scale:"Scale",Hold:"Hold",Fix:"Fix",Wait:"Waiting"}[s.verdict]}${s.verdict!=="Wait"&&s.judged==="last week"?" <small>(last week)</small>":""}</span></header>
+   <div class="big"><span class="n">${fmt(s.fNow)}</span><span class="l">followers</span>${s.fChange!=null?`<span class="delta ${s.fChange>=0?"up":"down"}">${s.fChange>=0?"+":""}${fmt(s.fChange)} this week</span>`:""}</div>
+   ${s.latest?bars(lr,s.base,s.m.unit):`<div class="cmp"><div class="row"><span>Latest</span><div class="bar"></div><span class="v">n/a</span></div><div class="row"><span>Last week avg</span><div class="bar"></div><span class="v">n/a</span></div></div>`}
+   <p class="say">${esc(s.say)}</p>
+   <span class="open">Open ${s.m.name}</span></button>`}
+function medium(s){
+  if(!s)return;const m=s.m,I=insightsFor(m.id);
+  const kpi=(l,n,was,p)=>`<div class="kpi"><div class="l">${l}</div><div class="n">${n}</div><div class="was">${was} ${p!==undefined?deltaHTML(p):""}</div></div>`;
+  const rows=[...s.tw,...s.lw].sort((a,b)=>(b.date+(b.slot_ist||"")).localeCompare(a.date+(a.slot_ist||"")));
+  const base=s.reachLW??s.base;
+  const idx=r=>{if(r.reach==null||!base)return"n/a";const p=pct(r.reach,base);const w=Math.min(50,Math.abs(p)/2);return`<span class="idx"><span class="delta ${p>=0?"up":"down"}">${p>=0?"+":""}${Math.round(p)}%</span><span class="b"><i style="${p>=0?`left:50%;width:${w}%;background:${COL.up}`:`right:50%;width:${w}%;background:${COL.down}`}"></i></span></span>`};
+  const best=[...s.tw,...s.lw].filter(r=>r.score!=null).sort((a,b)=>b.score-a.score);
+  $("p-medium").innerHTML=`
+   <div class="dhead"><h1>${m.name}</h1><span class="tag ${s.verdict}">${{Scale:"Scale",Hold:"Hold",Fix:"Fix",Wait:"Waiting"}[s.verdict]}</span></div>
+   <p class="dsay">${esc(s.say)}</p>
+   <div class="kpis">
+     ${kpi("Followers",fmt(s.fNow),s.fChange!=null?`${s.fChange>=0?"+":""}${fmt(s.fChange)} this week`:(s.fDate?"as of "+nice(s.fDate):"not logged yet"))}
+     ${kpi("Posts",s.tw.length,`last week ${s.lw.length}`)}
+     ${kpi(`Avg ${m.unit} per post`,fmt(s.reachTW),`last week ${fmt(s.reachLW)}`,pct(s.reachTW,s.reachLW))}
+     ${kpi("Avg score per 1,000",fmt1(s.scoreTW),`last week ${fmt1(s.scoreLW)}`,pct(s.scoreTW,s.scoreLW))}
+   </div>
+   <div class="grid2">
+     <div class="panel"><h3>Day by day</h3><p class="sub">Total ${m.unit} per day: this week against the same day last week</p><div class="chart"><canvas id="cDay"></canvas></div></div>
+     <div class="panel latest"><h3>Latest post</h3>${s.latest?`<div class="t">${s.latest.url?`<a href="${esc(s.latest.url)}" target="_blank" rel="noopener">${esc(s.latest.title||s.latest.content_id)}</a>`:esc(s.latest.title||s.latest.content_id)}</div><div class="meta">${niceDay(s.latest.date)}${s.latest.slot_ist?", "+esc(s.latest.slot_ist):""}${s.latest.format&&s.latest.format!=="legacy"?" · "+esc(s.latest.format):""}</div>
+       <div class="vs"><div><div class="l">This post</div><div class="n" style="color:${COL.now}">${fmt(s.latest.reach)}</div></div><div><div class="l">${s.baseLabel}</div><div class="n" style="color:#7B8796">${fmt(s.base)}</div></div></div>
+       <div>${deltaHTML(s.latestVs," against "+s.baseLabel)}</div>`:`<p class="empty">No posts logged yet. Grok adds each post 48 hours after it goes out.</p>`}</div>
+   </div>
+   <div class="grid2">
+     <div class="panel"><h3>Every post, this week and last</h3><p class="sub">Each post against last week's average ${m.unit}</p>${rows.length?`<table><thead><tr><th>Date</th><th>Post</th><th class="num">${m.unit[0].toUpperCase()+m.unit.slice(1)}</th><th class="num">Score</th><th class="num">vs last week</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="white-space:nowrap">${niceDay(r.date)}</td><td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title||r.content_id)}</a>`:esc(r.title||r.content_id)}</td><td class="num">${fmt(r.reach)}</td><td class="num">${fmt1(r.score)}</td><td class="num">${idx(r)}</td></tr>`).join("")}</tbody></table>`:`<p class="empty">No posts in these two weeks.</p>`}</div>
+     <div class="panel notes"><h3>The read on ${m.name}</h3><p class="sub">From the Sunday review and this week's numbers</p>
+       ${[["Working",COL.up,I.working],["Not working",COL.down,I.notworking],["Changing",COL.now,I.changing]].map(([t,c,a])=>`<div style="--c:${c};margin-bottom:14px"><b style="font-size:14px">${t}</b>${a.length?`<ul style="margin-top:6px">${a.map(r=>`<li>${esc(r.text)}</li>`).join("")}</ul>`:`<p class="empty" style="padding:4px 0">Nothing noted.</p>`}</div>`).join("")}
+       ${best.length?`<div style="--c:${COL.ink}"><b style="font-size:14px">Best scoring post</b><ul style="margin-top:6px"><li>${esc(best[0].title||best[0].content_id)}, score ${fmt1(best[0].score)}</li></ul></div>`:""}
+     </div>
+   </div>
+   <div class="panel"><h3>Followers</h3><p class="sub">Daily count logged by Grok at 23:00 IST</p><div class="chart" style="height:200px"><canvas id="cFol"></canvas></div></div>`;
+  const days=[...Array(7)].map((_,i)=>add(WEEK,i)),ldays=days.map(d=>add(d,-7)),today=todayIST();
+  const tot=(d)=>{const p=posts(m,d,d);return p.length?sum(p.map(r=>r.reach)):null};
+  chart($("cDay"),{type:"line",data:{labels:days.map(d=>new Date(d+"T00:00:00Z").toLocaleDateString("en-GB",{weekday:"short",timeZone:"UTC"})),datasets:[
+    {label:"This week",data:days.map(d=>d>today?null:tot(d)),borderColor:COL.now,backgroundColor:COL.now,tension:.3,spanGaps:true,pointRadius:4,borderWidth:2.5},
+    {label:"Last week",data:ldays.map(tot),borderColor:COL.then,backgroundColor:COL.then,borderDash:[5,4],tension:.3,spanGaps:true,pointRadius:3,borderWidth:2}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:14}}},scales:{y:{beginAtZero:true,grid:{color:"#EFE9DF"}},x:{grid:{display:false}}}}});
+  const f=D.Daily_Followers.filter(r=>num(r[m.fol])!=null);
+  chart($("cFol"),{type:"line",data:{labels:f.map(r=>nice(r.date)),datasets:[{data:f.map(r=>num(r[m.fol])),borderColor:COL.ink,backgroundColor:COL.ink,tension:.3,pointRadius:3,borderWidth:2}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{precision:0},grid:{color:"#EFE9DF"}},x:{grid:{display:false}}}}})}
 function plan(){
-  const P=DATA.Plan||{},pr=planRows();if(!pr.length){$("cal").innerHTML=`<p class="empty">No plan loaded.</p>`;return}
-  $("planTitle").textContent=`${P.name||"Plan"} · ${P.period||""}`;$("planSub").textContent=Object.entries(P.themes||{}).map(([w,t])=>`Week ${w}: ${t}`).join("   ·   ")+". Click any piece for the full brief.";
-  const dates=[...new Set(pr.map(r=>r.date))].sort();let start=dates[0];const dow=(new Date(start+"T00:00:00Z").getUTCDay()+6)%7;start=addDays(start,-dow);const end=dates[dates.length-1];const now=todayIST();let html="";
-  for(let d=start;d<=end||((new Date(d+"T00:00:00Z").getUTCDay()+6)%7)!==0;d=addDays(d,1)){if(d>addDays(end,7))break;const ps=pr.filter(r=>r.date===d);const dn=new Date(d+"T00:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"});
-    html+=`<div class="day ${ps.length?"":"off"} ${d===now?"today":""}"><h4>${dn}</h4>${ps.map(r=>`<div class="pc ${laneCls(r.lane)}" onclick="showPiece('${r.id}')"><b>${r.slot_ist} · ${r.format}</b> <span class="pill ${r.status}" style="font-size:9px;padding:0 6px">${r.status}</span><br>${esc(r.kind==="line"?"X line":r.hook)}</div>`).join("")}</div>`}
-  $("cal").innerHTML=`<div class="cal">${html}</div>`;
-  const rl=pr.filter(r=>r.kind==="reel");$("planMix").innerHTML=[1,2].map(w=>{const rs=rl.filter(r=>r.week===w);return`<p class="mono" style="font-size:11px;margin:4px 0">WEEK ${w} · ${rs.length} REELS</p>`+LANES.map(([l,t,tl])=>{const n=rs.filter(r=>r.lane===l).length,s=rs.length?n/rs.length:0;return`<div class="trow"><div class="r"><span>${l}</span><span class="mono" style="font-size:12px">${n} · ${Math.round(s*100)}% (target ${tl})</span></div><div class="bar"><i style="width:${s*100}%"></i></div></div>`}).join("")}).join("");
-  const soon=pr.filter(r=>r.date>=now&&r.date<=addDays(now,2)&&r.verify_on_the_day&&r.kind!=="line");
-  $("verify").innerHTML=soon.length?`<table><tr><th>When</th><th>Piece</th><th>Check</th></tr>${soon.map(r=>`<tr><td class="mono" style="white-space:nowrap">${r.day} ${r.slot_ist}</td><td>${esc(r.hook)}</td><td class="note">${esc(r.verify_on_the_day)}</td></tr>`).join("")}</table>`:`<p class="empty">Nothing to verify in the next 3 days.</p>`}
-function showPiece(id){const r=planRows().find(x=>x.id===id);if(!r)return;$("dTitle").textContent=r.kind==="line"?"X line":r.hook;const F=[["When",`${r.day} ${r.date} · ${r.slot_ist} IST`],["Channels",r.channels],["Format",r.format],["Lane",r.lane+(r.india==="Y"?" (India)":"")],["Status",r.status+(r.note?" · "+r.note:"")],["Way in",r.way_in],["Story",r.kind==="line"?r.hook:r.story],["Useful",r.useful],["Fun",r.fun],["Verdict",r.verdict],["Verify",r.verify_on_the_day],["Hold lane",r.hold],["Path",r.path],["Models",r.model],["Plan ID",r.id]];$("dBody").innerHTML=F.filter(([,v])=>v).map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");$("dlg").showModal()}
-function lanes(){
-  const r28=reels(28).filter(r=>r.format!=="legacy");
-  const L=LANES.map(([n,t,tl])=>{const rs=r28.filter(r=>n==="India Edge"?String(r.india).toUpperCase()==="Y":r.lane===n&&String(r.india).toUpperCase()!=="Y");const sc=rs.map(r=>r.s).filter(x=>x!==null);const sk=rs.map(r=>num(r.skip_rate_7d)??num(r.skip_rate_48h)).filter(x=>x!==null);return{n,tl,posts:rs.length,share:r28.length?rs.length/r28.length:0,score:sc.length?sc.reduce((a,b)=>a+b,0)/sc.length:null,skip:sk.length?sk.reduce((a,b)=>a+b,0)/sk.length:null}});
-  const ranked=L.filter(x=>x.score!==null&&x.posts>=4).sort((a,b)=>b.score-a.score);L.forEach(x=>{if(x.posts<4||x.score===null)x.st="Wait";else{const i=ranked.indexOf(x);x.st=i<ranked.length/3?"Scale":(i>=ranked.length*2/3&&(x.skip===null||x.skip>.4)?"Cut":"Hold")}});
-  $("lanes").innerHTML=`<table><tr><th>Lane</th><th class="num">Posts</th><th class="num">Share</th><th>Target</th><th class="num">Score</th><th class="num">Skip</th><th>Signal</th></tr>${L.map(x=>`<tr><td>${x.n}</td><td class="num">${x.posts}</td><td class="num">${Math.round(x.share*100)}%</td><td>${x.tl}</td><td class="num">${x.score===null?"n/a":x.score.toFixed(1)}</td><td class="num">${x.skip===null?"n/a":Math.round(x.skip>1?x.skip:x.skip*100)+"%"}</td><td><span class="pill ${x.st}">${x.st}</span></td></tr>`).join("")}</table><p class="note" style="margin-top:8px">Legacy reels from before the restart are excluded.</p>`;
-  const fm={};r28.forEach(r=>{(fm[r.format]=fm[r.format]||[]).push(r)});
-  $("formats").innerHTML=Object.keys(fm).length?`<table><tr><th>Format</th><th class="num">Posts</th><th class="num">Avg reach</th><th class="num">Score</th><th class="num">Saves / 1k</th></tr>${Object.entries(fm).map(([f,rs])=>{const sc=rs.map(r=>r.s).filter(x=>x!==null),re=rs.map(r=>r.reach).filter(x=>x!==null),sv=rs.filter(r=>num(r.reach_48h)).map(r=>(num(r.saves_7d)??num(r.saves_48h)??0)/(num(r.reach_7d)??num(r.reach_48h))*1000);return`<tr><td>${esc(f)}</td><td class="num">${rs.length}</td><td class="num">${re.length?fmt(re.reduce((a,b)=>a+b,0)/re.length):"n/a"}</td><td class="num">${sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):"n/a"}</td><td class="num">${sv.length?(sv.reduce((a,b)=>a+b,0)/sv.length).toFixed(1):"n/a"}</td></tr>`}).join("")}</table>`:`<p class="empty">No new-format reels logged yet. First ones post Tue 24 Nov.</p>`;
-  const sc=DATA.Content_Log.filter(r=>r.date>=addDays(todayIST(),-27)&&r.s!==null).sort((a,b)=>b.s-a.s);const row=r=>`<tr><td class="mono">${r.date}</td><td>${esc(r.platform)}</td><td>${esc(r.format)}</td><td>${esc(r.title||r.content_id)}</td><td class="num">${fmt(r.reach)}</td><td class="num">${r.s.toFixed(1)}</td></tr>`;
-  $("topbottom").innerHTML=sc.length?`<table><tr><th>Date</th><th>Channel</th><th>Fmt</th><th>Best 5</th><th class="num">Reach</th><th class="num">Score</th></tr>${sc.slice(0,5).map(row).join("")}<tr><th>Date</th><th>Channel</th><th>Fmt</th><th>Worst 5</th><th class="num">Reach</th><th class="num">Score</th></tr>${sc.slice(-5).reverse().map(row).join("")}</table>`:`<p class="empty">No scored posts yet. Scores need reach, saves, shares and follows, which Grok logs at 48 h.</p>`}
+  const P=(D.LinkedInPlan||[]),st={};(D.Plan_Status||[]).forEach(r=>{if(r.id)st[r.id]=r});
+  $("p-plan").innerHTML=`<div class="dhead"><h1>This week's plan</h1></div><p class="dsay">LinkedIn runs the new playbook from Tuesday 24 November: "I gave AI Rs 20,000 and my Black Friday list." Instagram, Facebook, YouTube Shorts and X post the videos already made, two a day.</p>
+  <div class="plan">${P.map(r=>{const s=(st[r.id]&&st[r.id].status)||"planned";return`<div class="prow"><div class="d">${niceDay(r.date)}<small>${esc(r.time)} IST, ${esc(r.channel)}</small></div><div class="h">${esc(r.title)}<small>${esc(r.format)} · ${esc(r.pillar)}${r.needs?" · Needs Kunal: "+esc(r.needs):""}</small></div><span class="st ${s}">${s}</span></div>`}).join("")}</div>`}
 function health(){
-  const now=todayIST(),q=(DATA.Grok_QC||[]).map(r=>({...r,date:dstr(r.date)})),inc=(DATA.Incidents||[]).map(r=>({...r,date:dstr(r.date)}));
-  const q7=q.filter(r=>r.date>=addDays(now,-6)),fails=q7.filter(r=>!String(r.gate_g).toUpperCase().includes("PASS")),open=inc.filter(r=>String(r.status||"").toLowerCase()!=="closed");
-  const held=planRows().filter(r=>r.status==="held"&&r.date>=addDays(now,-6));
-  $("htiles").innerHTML=[tile("Packages checked, 7 d",q7.length,"by Grok (Gate G)",""),tile("Gate G fails, 7 d",fails.length,"caught before posting",fails.length?"down":"up"),tile("Open incidents",open.length,open.filter(r=>String(r.urgent).toUpperCase()==="Y").length+" urgent",open.length?"down":"up"),tile("Held pieces, 7 d",held.length,"in the HOLD lane",held.length?"down":"")].join("");
-  const days=[];for(let i=13;i>=0;i--)days.push(addDays(now,-i));
-  chart("cQC",{type:"bar",data:{labels:days.map(d=>d.slice(5)),datasets:[{label:"Pass",data:days.map(d=>q.filter(r=>r.date===d&&String(r.gate_g).toUpperCase().includes("PASS")).length),backgroundColor:"#2E6B4F"},{label:"Fail",data:days.map(d=>q.filter(r=>r.date===d&&!String(r.gate_g).toUpperCase().includes("PASS")).length),backgroundColor:"#DF3C90"}]},options:{maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,ticks:{precision:0}}},plugins:{legend:{position:"bottom"}}}});
-  const srt=[...open,...inc.filter(r=>!open.includes(r))];$("incidents").innerHTML=srt.length?`<table><tr><th>Date</th><th>What happened</th><th>Status</th></tr>${srt.slice(0,12).map(r=>`<tr><td class="mono">${r.date}</td><td>${esc(r.what_happened||r.check_or_type||"")}<div class="note">${esc(r.content_id||"")}</div></td><td>${esc(r.status||"open")}</td></tr>`).join("")}</table>`:`<p class="empty">No incidents logged.</p>`}
-function learn(){const t=(rows,cols)=>rows.length?`<table><tr>${cols.map(c=>`<th>${c.replace(/_/g," ")}</th>`).join("")}</tr>${rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(c==="date"||c==="start"?dstr(r[c]):r[c])}</td>`).join("")}</tr>`).join("")}</table>`:`<p class="empty">Nothing logged yet.</p>`;
-  const e=DATA.Experiments||[],d=DATA.Decisions||[];$("exps").innerHTML=t(e,e.length?Object.keys(e[0]):[]);$("decs").innerHTML=t(d,d.length?Object.keys(d[0]):[])}
-/* ---------- nav + gate ---------- */
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));document.querySelectorAll("section.page").forEach(s=>s.classList.toggle("on",s.id==="p-"+b.dataset.p));$("ptitle").textContent=b.textContent;Object.values(charts).forEach(c=>c.resize())});
-["fq","fplat","flane","ffmt","fdays"].forEach(id=>$(id).addEventListener("input",drawPosts));
-$("csv").onclick=exportCSV;$("load").onclick=()=>loadSheet($("sheetId").value);$("pick").onclick=()=>$("file").click();$("file").onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);
-$("useSeed").onclick=()=>{clearInterval(timer);SRC="seed";DATA=merge(null);renderAll();status("Showing seed data only.")};
+  const ws=WEEK,we=add(WEEK,6),q=(D.Grok_QC||[]).map(r=>({...r,date:dstr(r.date)})).filter(r=>r.date>=ws&&r.date<=we),inc=(D.Incidents||[]).map(r=>({...r,date:dstr(r.date)}));
+  const fails=q.filter(r=>!String(r.gate_g).toUpperCase().includes("PASS")),open=inc.filter(r=>String(r.status||"").toLowerCase()!=="closed");
+  $("p-health").innerHTML=`<div class="dhead"><h1>Checks and incidents</h1></div><p class="dsay">${q.length?`Grok checked ${q.length} package${q.length>1?"s":""} this week and stopped ${fails.length}.`:"No checks logged this week yet."} ${open.length?`${open.length} incident${open.length>1?"s are":" is"} still open.`:"No open incidents."}</p>
+   <div class="panel">${inc.length?`<table><thead><tr><th>Date</th><th>What happened</th><th>Status</th></tr></thead><tbody>${[...open,...inc.filter(r=>!open.includes(r))].slice(0,20).map(r=>`<tr><td>${niceDay(r.date)}</td><td>${esc(r.what_happened||r.check_or_type||"")}</td><td>${esc(r.status||"open")}</td></tr>`).join("")}</tbody></table>`:`<p class="empty">Nothing logged. Grok records every stopped package and problem here.</p>`}</div>`}
+function settings(){
+  $("p-settings").innerHTML=`<div class="dhead"><h1>Data and settings</h1></div><p class="dsay">The dashboard reads the tracker Google Sheet every 10 minutes. Grok fills it in daily.</p>
+  <div class="grid2"><div class="panel"><h3>Connect the tracker</h3><p class="sub">Share the sheet as "Anyone with the link can view", then paste the link.</p>
+   <div class="field"><label for="sheetId">Google Sheet link</label><input id="sheetId" value="${esc(store.get("wtai_sheet")||"")}" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
+   <div class="row-btns"><button class="btn" id="bConnect">Connect sheet</button><button class="btn ghost" id="bFile">Load the .xlsx instead</button><button class="btn ghost" id="bSample">Preview with sample data</button><button class="btn ghost" id="bSeed">Back to starter data</button><input type="file" id="file" accept=".xlsx" hidden></div>
+   <p class="note" id="setMsg" style="margin-top:10px"></p></div>
+   <div class="panel"><h3>Still to come from Grok</h3><p class="sub">Backfill due Wednesday 25 November</p><ul class="gaps">${(SEED.Gaps||[]).map(g=>`<li>${esc(g)}</li>`).join("")}</ul></div></div>
+  <div class="panel"><h3>How the numbers work</h3><table><tbody>
+   <tr><td><b>Latest vs last week</b></td><td>The most recent post's reach against the average reach per post in the previous Monday to Sunday week.</td></tr>
+   <tr><td><b>Score</b></td><td>(shares x3 + saves x2 + follows x5 + comments) per 1,000 reach, using 7-day numbers when logged, else 48-hour.</td></tr>
+   <tr><td><b>Scale / Hold / Fix</b></td><td>Scale: reach per post up 20% or more on last week, or score up 25%. Fix: reach per post down 20% or more. Hold: in between. Waiting: no posts this week yet.</td></tr>
+   <tr><td><b>The read</b></td><td>Working, not working and changing come from the Insights tab (Claude writes it in the Sunday review) plus signals from this week's numbers.</td></tr></tbody></table></div>`;
+  $("bConnect").onclick=()=>loadSheet($("sheetId").value);$("bFile").onclick=()=>$("file").click();$("file").onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);
+  $("bSample").onclick=()=>{SRC="sample";D=build(sample(),true);setWeeks();render();show("summary")};$("bSeed").onclick=()=>{SRC="seed";clearInterval(timer);D=build(null);setWeeks();render();show("summary")}}
+
+/* ---------- sample data (clearly labelled) ---------- */
+function sample(){
+  let seed=11;const r=()=>(seed=(seed*9301+49297)%233280)/233280;const out={Content_Log:[],Daily_Followers:[],Insights:[],Grok_QC:[],Incidents:[]};
+  const base={linkedin:[1200,2],instagram:[180,14],youtube:[220,14],facebook:[90,14],x:[140,9],substack:[260,1]};
+  const t=todayIST(),start=add(monday(t),-14);const fol={linkedin:6100,instagram:48,youtube_subs:30,facebook:120,x:66,substack:310};
+  for(let d=start;d<=t;d=add(d,1)){const row={date:d};for(const k in fol){fol[k]+=Math.round(r()*(k==="linkedin"?25:6));row[k]=fol[k]}out.Daily_Followers.push(row);
+    for(const p in base){const [b,perWeek]=base[p];if(r()>perWeek/7)continue;const growth=1+(new Date(d)-new Date(start))/864e5*.03;const reach=Math.round(b*growth*(.5+r()*1.2));
+      out.Content_Log.push({date:d,platform:p,content_id:p+d,title:`Sample ${p} post, ${nice(d)}`,reach_48h:reach,shares_48h:Math.round(reach*r()*.02),saves_48h:Math.round(reach*r()*.03),follows_48h:Math.round(reach*r()*.008),comments_48h:Math.round(r()*8),likes_48h:Math.round(reach*.03)});out.Grok_QC.push({date:d,gate_g:r()>.05?"PASS":"FAIL"})}}
+  out.Insights=[{date:t,medium:"all",type:"headline",text:"Sample week: this text and every number on screen are made up, to show how the read will look."},{date:t,medium:"linkedin",type:"working",text:"Sample: carousels with the prompt on slide 3 earned the most saves."},{date:t,medium:"instagram",type:"not working",text:"Sample: news reels without a hook lost viewers in the first 2 seconds."},{date:t,medium:"all",type:"changing",text:"Sample: moving the weekly video to Monday 09:00."}];
+  return out}
+
+/* ---------- events + gate ---------- */
+document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;const id=b.dataset.go;if(id.startsWith("m:")){const s=MEDIA.map(stats).find(x=>"m:"+x.m.id===id);medium(s)}show(id)});
+$("weekSel").onchange=e=>{WEEK=e.target.value;render()};
 async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
-function start(){$("gate").remove();$("app").style.display="";DATA=merge(null);renderAll();status("Showing seed data. Connect the tracker sheet for live numbers.");const s=store.get("wtai_sheet")||DEFAULT_SHEET;if(s){$("sheetId").value=s;loadSheet(s,true)}}
-async function tryPass(){const h=await sha($("pass").value);if(h===PASS_HASH){try{sessionStorage.setItem("wtai_ok","1")}catch(e){}start()}else $("perr").textContent="That passcode is not right."}
-$("enter").onclick=tryPass;$("pass").addEventListener("keydown",e=>{if(e.key==="Enter")tryPass()});
+function start(){$("gate").remove();$("app").hidden=false;D=build(null);setWeeks();render();const s=store.get("wtai_sheet")||DEFAULT_SHEET;if(s)loadSheet(s,true)}
+$("gateForm").onsubmit=async e=>{e.preventDefault();if(await sha($("pass").value)===PASS_HASH){try{sessionStorage.setItem("wtai_ok","1")}catch(x){}start()}else $("perr").textContent="That passcode isn't right. Check capitals and try again."};
 let ok=false;try{ok=sessionStorage.getItem("wtai_ok")==="1"}catch(e){}if(ok)start();else $("pass").focus();
 </script>
 </body></html>
