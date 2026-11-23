@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>What the AI!? Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="assets/chart.umd.min.js"></script>
+<script src="assets/xlsx.full.min.js"></script>
+<script src="data/seed.js"></script>
+<style>
+:root{--navy:#12233D;--paper:#FFF9F1;--orange:#E4572E;--slate:#536173;--mag:#DF3C90;--green:#2E6B4F;--line:#E7DFD1;--soft:#F6EFE4}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--navy);font-family:"IBM Plex Sans",Arial,sans-serif;font-size:14px;line-height:1.45}
+a{color:var(--orange)}
+.mono{font-family:"IBM Plex Mono",monospace}
+/* gate */
+#gate{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:50}
+#gate .box{background:var(--paper);border-radius:14px;padding:28px 30px;width:340px}
+#gate h1{font-family:Fraunces,serif;font-size:24px;margin-bottom:6px}#gate h1 span{color:var(--orange)}
+#gate input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;margin:14px 0 10px;font-size:15px}
+#gate .err{color:var(--mag);font-size:12px;min-height:16px}
+/* layout */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+nav{background:var(--navy);color:var(--paper);padding:22px 0;position:sticky;top:0;height:100vh}
+nav .brand{font-family:Fraunces,serif;font-size:22px;padding:0 22px 4px}nav .brand span{color:var(--orange)}
+nav .tag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#C9D1DC;padding:0 22px 22px}
+nav button{display:block;width:100%;text-align:left;background:none;border:0;color:#C9D1DC;padding:10px 22px;font-size:14px;cursor:pointer;border-left:3px solid transparent;font-family:inherit}
+nav button.on,nav button:hover{color:var(--paper);background:#1B3150;border-left-color:var(--orange)}
+nav .foot{position:absolute;bottom:18px;left:22px;right:16px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:#8C99AB}
+main{padding:24px 30px 50px;min-width:0}
+.top{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.top h2{font-family:Fraunces,serif;font-size:28px;font-weight:600}
+.top .asof{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--slate);text-align:right}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+.b-live{background:var(--green);color:#fff}.b-seed{background:#C7B89F;color:var(--navy)}
+section.page{display:none;gap:18px}section.page.on{display:grid}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile .l{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate)}
+.tile .v{font-family:Fraunces,serif;font-size:30px;margin-top:2px}
+.tile .d{font-size:12px;color:var(--slate)}
+.up{color:var(--green)!important}.down{color:var(--mag)!important}
+.g2{display:grid;grid-template-columns:1.5fr 1fr;gap:18px}.g2e{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+.card h3{font-family:Fraunces,serif;font-weight:600;font-size:18px}
+.card .sub{color:var(--slate);font-size:12px;margin:2px 0 12px}
+.chart{position:relative;height:260px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);padding:6px 8px;border-bottom:2px solid var(--line);cursor:default;white-space:nowrap}
+th.s{cursor:pointer}th.s:hover{color:var(--orange)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:hover td{background:#FFFBF5}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:2px 9px;border-radius:12px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#fff;white-space:nowrap}
+.Scale,.posted{background:var(--green)}.Hold,.scripted,.qc{background:var(--slate)}.Cut,.held,.failed{background:var(--mag)}.Wait,.planned{background:#C7B89F;color:var(--navy)}
+.bar{height:9px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:var(--orange)}
+.trow{margin-bottom:12px}.trow .r{display:flex;justify-content:space-between;font-size:13px;gap:10px}
+.note{font-size:12px;color:var(--slate)}.empty{color:var(--slate);font-style:italic;padding:8px 0}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+select,input[type=text],input[type=search]{padding:7px 9px;border:1px solid var(--line);border-radius:7px;font-family:inherit;font-size:13px;background:#fff;color:var(--navy)}
+button.btn{background:var(--orange);color:#fff;border:0;border-radius:7px;padding:8px 13px;font-weight:600;cursor:pointer;font-size:13px;font-family:inherit}
+button.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+/* plan calendar */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.day{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;min-height:150px}
+.day.today{border:2px solid var(--orange)}.day.off{background:transparent;border:1px dashed var(--line)}
+.day h4{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);margin-bottom:6px}
+.pc{border-left:3px solid var(--slate);padding:4px 6px;margin-bottom:5px;font-size:11.5px;background:var(--soft);border-radius:0 6px 6px 0;cursor:pointer}
+.pc b{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--slate);font-weight:600}
+.pc.Hardware{border-color:var(--navy)}.pc.Software{border-color:var(--orange)}.pc.HumanAI{border-color:var(--mag)}.pc.IndiaEdge{border-color:var(--green)}.pc.All{border-color:#C7B89F}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--slate);margin-bottom:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+dialog{margin:auto;border:0;border-radius:14px;padding:22px 24px;max-width:620px;width:92vw;color:var(--navy)}
+dialog::backdrop{background:rgba(18,35,61,.55)}
+dialog h3{font-family:Fraunces,serif;font-size:22px;margin-bottom:8px}
+dialog dl{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:13px}dialog dt{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;color:var(--slate);padding-top:2px}
+.gap li{margin:0 0 6px 18px;font-size:13px}
+@media(max-width:1100px){.tiles{grid-template-columns:repeat(2,1fr)}.g2,.g2e{grid-template-columns:1fr}.cal{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.app{grid-template-columns:1fr}nav{position:static;height:auto;display:flex;flex-wrap:wrap;padding:12px}nav .brand,nav .tag,nav .foot{display:none}nav button{width:auto;padding:8px 12px;border-left:0;border-bottom:3px solid transparent}nav button.on{border-bottom-color:var(--orange)}main{padding:16px}}
+</style></head>
+<body>
+<div id="gate"><div class="box">
+  <h1>What the <span>AI!?</span></h1><div class="note">Performance dashboard. Enter the passcode.</div>
+  <input id="pass" type="password" autocomplete="current-password" placeholder="Passcode">
+  <div class="err" id="perr"></div>
+  <button class="btn" id="enter" style="width:100%">Open dashboard</button>
+</div></div>
+
+<div class="app" id="app" style="display:none">
+<nav>
+  <div class="brand">What the <span>AI!?</span></div>
+  <div class="tag">Human + AI · Performance</div>
+  <button data-p="overview" class="on">Overview</button>
+  <button data-p="channels">Channels</button>
+  <button data-p="content">Content</button>
+  <button data-p="plan">Plan and calendar</button>
+  <button data-p="lanes">Lanes and formats</button>
+  <button data-p="health">Machine health</button>
+  <button data-p="learn">Experiments and decisions</button>
+  <button data-p="data">Data and settings</button>
+  <div class="foot">Draw the line.<br>Claude makes · Grok posts</div>
+</nav>
+<main>
+  <div class="top"><h2 id="ptitle">Overview</h2><div class="asof"><span id="srcBadge" class="badge b-seed">seed</span><br><span id="asof"></span></div></div>
+
+  <section class="page on" id="p-overview">
+    <div class="tiles" id="tiles"></div>
+    <div class="g2">
+      <div class="card"><h3>Followers</h3><div class="sub">Daily counts logged by Grok at 23:00 IST (log scale)</div><div class="chart"><canvas id="cFol"></canvas></div></div>
+      <div class="card"><h3>Targets</h3><div class="sub">Latest count against this month's target and the 31 May goal</div><div id="targets"></div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><h3>Next up</h3><div class="sub">The next pieces in the plan, with live status</div><div id="nextup"></div></div>
+      <div class="card"><h3>This week at a glance</h3><div class="sub">Plan vs posted, last 7 days</div><div id="weekglance"></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-channels">
+    <div class="card"><h3>Channel scorecard</h3><div class="sub">Latest followers, change over 7 and 28 days, posts and reach in the last 7 days</div><div id="chanTable"></div></div>
+    <div class="g2e">
+      <div class="card"><h3>Reach by channel, last 28 days</h3><div class="sub">Sum of 48 h reach (or views) per day</div><div class="chart"><canvas id="cChanReach"></canvas></div></div>
+      <div class="card"><h3>Benchmarks from before the restart</h3><div class="sub">What the old pipeline achieved. The bar to beat.</div><div id="history"></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-content">
+    <div class="card"><h3>Reach and score per day</h3><div class="sub">Bars: reach or views. Line: average score per 1,000 reach = (shares x3 + saves x2 + follows x5 + comments) / reach x 1000</div><div class="chart"><canvas id="cReach"></canvas></div></div>
+    <div class="card"><h3>Every post</h3><div class="sub">Click a column to sort. Score uses 7 d numbers when present, else 48 h.</div>
+      <div class="filters"><input type="search" id="fq" placeholder="Search titles"><select id="fplat"></select><select id="flane"></select><select id="ffmt"></select><select id="fdays"><option value="7">Last 7 days</option><option value="28" selected>Last 28 days</option><option value="9999">All time</option></select><button class="btn ghost" id="csv">Export CSV</button></div>
+      <div id="postTable" style="overflow:auto"></div></div>
+  </section>
+
+  <section class="page" id="p-plan">
+    <div class="card"><h3 id="planTitle">Plan</h3><div class="sub" id="planSub"></div>
+      <div class="legend"><span><i style="background:var(--navy)"></i>Hardware</span><span><i style="background:var(--orange)"></i>Software</span><span><i style="background:var(--mag)"></i>Human + AI</span><span><i style="background:var(--green)"></i>India Edge</span><span><i style="background:#C7B89F"></i>All channels</span><span>Status: <span class="pill planned">planned</span> <span class="pill scripted">scripted</span> <span class="pill posted">posted</span> <span class="pill held">held</span></span></div>
+      <div id="cal"></div></div>
+    <div class="g2e">
+      <div class="card"><h3>Lane mix in the plan</h3><div class="sub">Reels only, against the rulebook shares</div><div id="planMix"></div></div>
+      <div class="card"><h3>Facts to verify</h3><div class="sub">Pieces in the next 3 days and what must be checked before scripting</div><div id="verify"></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-lanes">
+    <div class="g2e">
+      <div class="card"><h3>Lanes, last 28 days</h3><div class="sub">Signal is a suggestion. Claude decides in the Sunday review.</div><div id="lanes"></div></div>
+      <div class="card"><h3>Formats, last 28 days</h3><div class="sub">Average score and saves per 1,000 reach by format</div><div id="formats"></div></div>
+    </div>
+    <div class="card"><h3>Best and worst</h3><div class="sub">Top and bottom 5 scored posts, last 28 days</div><div id="topbottom"></div></div>
+  </section>
+
+  <section class="page" id="p-health">
+    <div class="tiles" id="htiles"></div>
+    <div class="g2e">
+      <div class="card"><h3>Grok QC, last 14 days</h3><div class="sub">Gate G results per day</div><div class="chart"><canvas id="cQC"></canvas></div></div>
+      <div class="card"><h3>Incidents</h3><div class="sub">Open first</div><div id="incidents"></div></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-learn">
+    <div class="card"><h3>Experiments</h3><div class="sub">From the tracker's Experiments tab</div><div id="exps"></div></div>
+    <div class="card"><h3>Decisions log</h3><div class="sub">From the tracker's Decisions tab</div><div id="decs"></div></div>
+  </section>
+
+  <section class="page" id="p-data">
+    <div class="g2e">
+      <div class="card"><h3>Live data source</h3><div class="sub">The dashboard reads the tracker Google Sheet every 10 minutes. Grok writes to that sheet daily.</div>
+        <input type="text" id="sheetId" placeholder="Google Sheet link or ID" style="width:100%;margin-bottom:8px">
+        <div class="filters"><button class="btn" id="load">Connect sheet</button><button class="btn ghost" id="pick">Load tracker .xlsx</button><button class="btn ghost" id="useSeed">Use seed data only</button><input type="file" id="file" accept=".xlsx" style="display:none"></div>
+        <p class="note" id="status"></p>
+        <p class="note" style="margin-top:8px">The sheet must be shared as "Anyone with the link can view". Tabs read: Content_Log, Daily_Followers, Targets, Incidents, Grok_QC, Experiments, Decisions, Plan_Status.</p></div>
+      <div class="card"><h3>Data still missing</h3><div class="sub">Grok backfills these (see the backfill brief)</div><ul class="gap" id="gaps"></ul></div>
+    </div>
+    <div class="card"><h3>How the numbers are built</h3><div class="sub">Definitions</div>
+      <table><tr><th>Measure</th><th>Definition</th></tr>
+      <tr><td>Score</td><td>(shares x3 + saves x2 + follows x5 + comments) / reach x 1000. 7 d numbers when logged, else 48 h.</td></tr>
+      <tr><td>On time</td><td>Posted within 10 minutes of the planned slot.</td></tr>
+      <tr><td>India share</td><td>Reels marked India = Y over a rolling 28 days. Target 15 to 20%.</td></tr>
+      <tr><td>Lane signal</td><td>Scale: top third by score. Cut: bottom third and skip rate over 40%. Hold: the rest. Wait: fewer than 4 posts.</td></tr>
+      <tr><td>Seed data</td><td>Numbers read from public profiles and past reports on 23 Nov 2026. Replaced by live data once the sheet is connected.</td></tr></table></div>
+  </section>
+</main></div>
+
+<dialog id="dlg"><h3 id="dTitle"></h3><dl id="dBody"></dl><div style="margin-top:16px;text-align:right"><button class="btn" onclick="document.getElementById('dlg').close()">Close</button></div></dialog>
+
+<script>
+/* ---------- config ---------- */
+const PASS_HASH="27ddb1c5eb2c187072abbbd13672621f866472f3599594900d73f62e5ed843dd"; // SHA-256 of the passcode
+const DEFAULT_SHEET=""; // put the tracker Google Sheet ID here to auto-connect for every visitor
+const TABS=["Content_Log","Daily_Followers","Targets","Incidents","Grok_QC","Experiments","Decisions","Plan_Status"];
+const CH=[["instagram","Instagram","#E4572E"],["youtube_subs","YouTube","#12233D"],["linkedin","LinkedIn","#536173"],["x","X","#2E6B4F"],["facebook","Facebook","#C7B89F"],["substack","Newsletter","#DF3C90"]];
+const LANES=[["Hardware",.35,"35%"],["Software",.25,"25%"],["Human + AI",.20,"20%"],["India Edge",.175,"15 to 20%"]];
+/* ---------- helpers ---------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=v=>{if(v===undefined||v===null||v===""||v==="n/a")return null;const n=parseFloat(String(v).replace(/,/g,""));return isNaN(n)?null:n};
+const dstr=v=>{if(v instanceof Date)return new Date(v.getTime()+12*3600e3).toISOString().slice(0,10);if(typeof v==="number"){return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10)}return String(v||"").slice(0,10)};
+const fmt=n=>n===null||n===undefined||isNaN(n)?"n/a":Math.round(n).toLocaleString("en-IN");
+const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+const todayIST=()=>new Date(Date.now()+5.5*3600e3).toISOString().slice(0,10);
+const addDays=(d,n)=>new Date(new Date(d+"T00:00:00Z").getTime()+n*864e5).toISOString().slice(0,10);
+const laneCls=l=>String(l||"All").replace(/[^A-Za-z]/g,"");
+function reachOf(r){return num(r.reach_7d)??num(r.reach_48h)??num(r.views)}
+function score(r){for(const s of["7d","48h"]){const reach=num(r["reach_"+s]);if(reach)return((num(r["shares_"+s])||0)*3+(num(r["saves_"+s])||0)*2+(num(r["follows_"+s])||0)*5+(num(r["comments_"+s])||0))/reach*1000}return null}
+function parseCSV(t){const rows=[];let row=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'&&t[i+1]=='"'){f+='"';i++}else if(c=='"')q=false;else f+=c}else{if(c=='"')q=true;else if(c==","){row.push(f);f=""}else if(c=="\n"){row.push(f);rows.push(row);row=[];f=""}else if(c!="\r")f+=c}}if(f!==""||row.length){row.push(f);rows.push(row)}const h=(rows.shift()||[]).map(x=>x.trim());return rows.filter(r=>r.some(x=>x!=="")).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]])))}
+const charts={};function chart(id,cfg){charts[id]&&charts[id].destroy();Chart.defaults.font.family="IBM Plex Sans";Chart.defaults.color="#536173";charts[id]=new Chart($(id),cfg)}
+/* ---------- data ---------- */
+const SEED=window.WTAI_SEED||{};
+let DATA=null,SRC="seed",timer=null;
+function merge(live){
+  const d={};for(const t of TABS)d[t]=[];
+  for(const k of Object.keys(SEED))d[k]=SEED[k];
+  if(live){for(const t of TABS){if(live[t]&&live[t].length){
+    if(t==="Daily_Followers"){const m={};[...(SEED.Daily_Followers||[]),...live[t]].forEach(r=>{const k=dstr(r.date);m[k]={...(m[k]||{}),...Object.fromEntries(Object.entries(r).filter(([a,b])=>b!==""&&b!==null)),date:k}});d[t]=Object.values(m)}
+    else if(t==="Content_Log"){d[t]=[...(SEED.Content_Log||[]),...live[t]]}
+    else d[t]=live[t]}}}
+  d.Daily_Followers=(d.Daily_Followers||[]).map(r=>({...r,date:dstr(r.date)})).filter(r=>r.date&&r.date<=todayIST()).sort((a,b)=>a.date<b.date?-1:1);
+  d.Content_Log=(d.Content_Log||[]).filter(r=>r.content_id&&!String(r.title||"").startsWith("EXAMPLE")).map(r=>({...r,date:dstr(r.date),platform:String(r.platform||"").toLowerCase(),s:score(r),reach:reachOf(r)}));
+  return d}
+async function loadSheet(idOrUrl,quiet){
+  const m=String(idOrUrl||"").match(/\/d\/([a-zA-Z0-9-_]+)/);const id=m?m[1]:String(idOrUrl||"").trim();
+  if(!id){status("Paste the tracker's Google Sheet link first.");return}
+  status("Loading from Google Sheets...");
+  try{const live={};for(const t of TABS){try{const r=await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(t)}`);live[t]=r.ok?parseCSV(await r.text()):[]}catch(e){live[t]=[]}}
+    if(!live.Content_Log.length&&!live.Daily_Followers.length)throw new Error("no rows found");
+    store.set("wtai_sheet",id);SRC="live";DATA=merge(live);renderAll();status(`Live from Google Sheets. Refreshed ${new Date().toLocaleString("en-IN")}.`);
+    clearInterval(timer);timer=setInterval(()=>loadSheet(id,true),600000);
+  }catch(e){if(!quiet)status("Could not read the sheet. Share it as 'Anyone with the link can view', or load the .xlsx. ("+e.message+")")}}
+function loadFile(file){const rd=new FileReader();rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});const live={};for(const t of TABS){const ws=wb.Sheets[t];live[t]=ws?XLSX.utils.sheet_to_json(ws,{defval:""}):[]}SRC="file";DATA=merge(live);renderAll();status(`From ${file.name}, loaded ${new Date().toLocaleString("en-IN")}.`)}catch(err){status("Could not read that file: "+err.message)}};rd.readAsArrayBuffer(file)}
+function status(t){$("status").textContent=t}
+/* ---------- derived ---------- */
+function folLast(k){const f=DATA.Daily_Followers;for(let i=f.length-1;i>=0;i--){const v=num(f[i][k]);if(v!==null)return{v,date:f[i].date}}return null}
+function folAgo(k,days){const l=folLast(k);if(!l)return null;const t=addDays(l.date,-days);const f=DATA.Daily_Followers;for(let i=f.length-1;i>=0;i--){if(f[i].date<=t){const v=num(f[i][k]);if(v!==null)return v}}return null}
+function planRows(){const p=(DATA.Plan&&DATA.Plan.pieces)||[];const st={};(DATA.Plan_Status||[]).forEach(r=>{if(r.id)st[r.id]=r});DATA.Content_Log.forEach(r=>{if(r.plan_id)st[r.plan_id]=st[r.plan_id]||{status:"posted",content_id:r.content_id}});return p.map(r=>({...r,...(st[r.id]?{status:st[r.id].status||r.status,note:st[r.id].note||""}:{})}))}
+function reels(days){const from=addDays(todayIST(),-days);return DATA.Content_Log.filter(r=>r.platform==="instagram"&&r.date>=from)}
+/* ---------- render ---------- */
+function renderAll(){
+  $("srcBadge").className="badge "+(SRC==="seed"?"b-seed":"b-live");$("srcBadge").textContent=SRC==="seed"?"seed data":SRC==="file"?"from file":"live";
+  $("asof").textContent=SRC==="seed"?"Seed as of "+new Date(SEED.asof).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})+" IST":"Updated "+new Date().toLocaleString("en-IN");
+  overview();channels();content();plan();lanes();health();learn();
+  $("gaps").innerHTML=(SEED.Gaps||[]).map(g=>`<li>${esc(g)}</li>`).join("")}
+function tile(l,v,d,c){return`<div class="tile"><div class="l">${l}</div><div class="v">${v}</div><div class="d ${c||""}">${d}</div></div>`}
+function delta(k,days){const l=folLast(k),p=folAgo(k,days);if(!l)return["n/a","not logged yet",""];if(p===null)return[fmt(l.v),"as of "+l.date,""];const dd=l.v-p;return[fmt(l.v),`${dd>=0?"+":""}${fmt(dd)} in ${days} days`,dd>=0?"up":"down"]}
+function overview(){
+  const T=[];for(const[k,l]of[["instagram","Instagram followers"],["x","X followers"],["youtube_subs","YouTube subscribers"],["linkedin","LinkedIn followers"]]){const[v,d,c]=delta(k,7);T.push(tile(l,v,d,c))}
+  const r7=reels(7),r28=reels(28),sc=r28.map(r=>r.s).filter(x=>x!==null);
+  const ot=r7.filter(r=>r.on_time!==undefined&&r.on_time!=="");const ontime=ot.length?ot.filter(r=>String(r.on_time).toUpperCase()==="Y").length/ot.length:null;
+  T.push(tile("Reels on time, 7 d",ontime===null?"n/a":Math.round(ontime*100)+"%",`${r7.length} reels logged · target 14 a week`,ontime===null?"":ontime>=.95?"up":"down"));
+  const views7=r7.map(r=>r.reach).filter(x=>x!==null);T.push(tile("Avg reach per reel, 7 d",views7.length?fmt(views7.reduce((a,b)=>a+b,0)/views7.length):"n/a","benchmark before restart: 130",views7.length?(views7.reduce((a,b)=>a+b,0)/views7.length>=130?"up":"down"):""));
+  T.push(tile("Avg score, 28 d",sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):"n/a","per 1,000 reach",""));
+  const ind=r28.filter(r=>r.format!=="legacy");const india=ind.length?ind.filter(r=>String(r.india).toUpperCase()==="Y").length/ind.length:null;
+  T.push(tile("India share, 28 d",india===null?"n/a":Math.round(india*100)+"%","target 15 to 20%",india===null?"":(india>=.15&&india<=.2?"up":"down")));
+  $("tiles").innerHTML=T.join("");
+  const f=DATA.Daily_Followers;
+  chart("cFol",{type:"line",data:{labels:f.map(r=>r.date),datasets:CH.filter(([k])=>f.some(r=>num(r[k])!==null)).map(([k,n,c])=>({label:n,data:f.map(r=>num(r[k])),borderColor:c,backgroundColor:c,spanGaps:true,tension:.25,pointRadius:3,borderWidth:2}))},options:{maintainAspectRatio:false,scales:{y:{type:"logarithmic"}},plugins:{legend:{position:"bottom"}}}});
+  const months=["M1 31 Dec","M2 31 Jan","M3 28 Feb","M4 31 Mar","M5 30 Apr","M6 31 May"],ends=["2026-12-31","2027-01-31","2027-02-28","2027-03-31","2027-04-30","2027-05-31"];let mi=ends.findIndex(e=>todayIST()<=e);if(mi<0)mi=5;
+  const names={instagram:"Instagram",youtube_subs:"YouTube",x:"X",substack:"Newsletter",linkedin:"LinkedIn",facebook:"Facebook"};
+  $("targets").innerHTML=(DATA.Targets||[]).map(t=>{const l=folLast(t.channel);const tv=num(t[months[mi]]),fin=num(t["M6 31 May"]);const cur=l?l.v:null;const pct=cur!==null&&tv?Math.min(1,cur/tv):0;return`<div class="trow"><div class="r"><b>${names[t.channel]||t.channel}</b><span class="mono" style="font-size:12px">${fmt(cur)} / ${fmt(tv)} by ${months[mi].slice(3)} · ${fmt(fin)} by 31 May</span></div><div class="bar"><i style="width:${pct*100}%"></i></div></div>`}).join("")||`<p class="empty">No targets.</p>`;
+  const pr=planRows(),now=todayIST();const next=pr.filter(r=>r.date>=now&&r.kind!=="line").slice(0,6);
+  $("nextup").innerHTML=next.length?`<table><tr><th>When</th><th>Piece</th><th>Fmt</th><th>Status</th></tr>${next.map(r=>`<tr onclick="showPiece('${r.id}')" style="cursor:pointer"><td class="mono" style="white-space:nowrap">${r.day} ${r.date.slice(8)} · ${r.slot_ist}</td><td>${esc(r.hook)}<div class="note">${esc(r.channels)} · ${esc(r.lane)}</div></td><td>${r.format}</td><td><span class="pill ${r.status}">${r.status}</span></td></tr>`).join("")}</table>`:`<p class="empty">No upcoming pieces in the loaded plan.</p>`;
+  const wk=pr.filter(r=>r.date>=addDays(now,-6)&&r.date<=now);const by=s=>wk.filter(r=>r.status===s).length;
+  $("weekglance").innerHTML=`<table><tr><th>Measure</th><th class="num">Count</th></tr><tr><td>Planned pieces, last 7 days</td><td class="num">${wk.length}</td></tr><tr><td>Posted</td><td class="num up">${by("posted")}</td></tr><tr><td>Held</td><td class="num ${by("held")?"down":""}">${by("held")}</td></tr><tr><td>Still planned or scripted</td><td class="num">${by("planned")+by("scripted")+by("qc")}</td></tr><tr><td>Posts logged (all channels)</td><td class="num">${DATA.Content_Log.filter(r=>r.date>=addDays(now,-6)).length}</td></tr></table><p class="note" style="margin-top:8px">Last old-pipeline post: ${(()=>{const l=DATA.Content_Log.map(r=>r.date).sort().pop();return l||"n/a"})()}.</p>`}
+function channels(){
+  const now=todayIST(),plats=[["instagram","Instagram","instagram"],["youtube","YouTube","youtube_subs"],["linkedin","LinkedIn","linkedin"],["x","X","x"],["facebook","Facebook","facebook"],["substack","Newsletter","substack"]];
+  $("chanTable").innerHTML=`<table><tr><th>Channel</th><th class="num">Followers</th><th class="num">7 d</th><th class="num">28 d</th><th class="num">Posts 7 d</th><th class="num">Reach 7 d</th><th class="num">Avg score 28 d</th></tr>${plats.map(([p,n,k])=>{const l=folLast(k),a7=folAgo(k,7),a28=folAgo(k,28);const ps=DATA.Content_Log.filter(r=>r.platform===p&&r.date>=addDays(now,-6));const rs=ps.map(r=>r.reach).filter(x=>x!==null);const sc=DATA.Content_Log.filter(r=>r.platform===p&&r.date>=addDays(now,-27)&&r.s!==null).map(r=>r.s);const dd=(a)=>l&&a!==null?`<span class="${l.v-a>=0?"up":"down"}">${l.v-a>=0?"+":""}${fmt(l.v-a)}</span>`:"n/a";return`<tr><td><b>${n}</b></td><td class="num">${l?fmt(l.v):"n/a"}</td><td class="num">${dd(a7)}</td><td class="num">${dd(a28)}</td><td class="num">${ps.length}</td><td class="num">${rs.length?fmt(rs.reduce((a,b)=>a+b,0)):"n/a"}</td><td class="num">${sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):"n/a"}</td></tr>`}).join("")}</table>`;
+  const days=[];for(let i=27;i>=0;i--)days.push(addDays(now,-i));
+  chart("cChanReach",{type:"bar",data:{labels:days.map(d=>d.slice(5)),datasets:plats.map(([p,n],i)=>({label:n,data:days.map(d=>DATA.Content_Log.filter(r=>r.platform===p&&r.date===d).reduce((a,r)=>a+(r.reach||0),0)||null),backgroundColor:CH[i][2]}))},options:{maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},plugins:{legend:{position:"bottom"}}}});
+  $("history").innerHTML=`<table><tr><th>Post</th><th>Channel</th><th class="num">Result</th></tr>${(DATA.History||[]).map(h=>`<tr><td>${esc(h.title)}${h.note?`<div class="note">${esc(h.note)}</div>`:""}</td><td>${esc(h.platform)}</td><td class="num">${typeof h.value==="number"?fmt(h.value):esc(h.value)}<div class="note">${esc(h.metric)}</div></td></tr>`).join("")}</table>`}
+let sortKey="date",sortDir=-1;
+function content(){
+  const all=DATA.Content_Log;const opt=(id,label,vals)=>{const cur=$(id).value;$(id).innerHTML=`<option value="">${label}</option>`+[...new Set(vals)].filter(Boolean).sort().map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`).join("")};
+  opt("fplat","All channels",all.map(r=>r.platform));opt("flane","All lanes",all.map(r=>r.lane));opt("ffmt","All formats",all.map(r=>r.format));
+  drawPosts();
+  const from=addDays(todayIST(),-27),ig=all.filter(r=>r.date>=from),byDay={};ig.forEach(r=>{(byDay[r.date]=byDay[r.date]||{reach:0,s:[]});byDay[r.date].reach+=r.reach||0;if(r.s!==null)byDay[r.date].s.push(r.s)});const dl=Object.keys(byDay).sort();
+  chart("cReach",{data:{labels:dl,datasets:[{type:"bar",label:"Reach or views",data:dl.map(d=>byDay[d].reach),backgroundColor:"#12233D",yAxisID:"y"},{type:"line",label:"Avg score",data:dl.map(d=>byDay[d].s.length?byDay[d].s.reduce((a,b)=>a+b,0)/byDay[d].s.length:null),borderColor:"#E4572E",backgroundColor:"#E4572E",yAxisID:"y1",spanGaps:true,tension:.25}]},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true},y1:{beginAtZero:true,position:"right",grid:{drawOnChartArea:false}}}}})}
+function filtered(){const q=$("fq").value.toLowerCase(),p=$("fplat").value,l=$("flane").value,f=$("ffmt").value,from=addDays(todayIST(),-num($("fdays").value));return DATA.Content_Log.filter(r=>r.date>=from&&(!p||r.platform===p)&&(!l||r.lane===l)&&(!f||r.format===f)&&(!q||String(r.title||"").toLowerCase().includes(q)))}
+function drawPosts(){
+  const cols=[["date","Date"],["slot_ist","Slot"],["platform","Channel"],["format","Fmt"],["lane","Lane"],["title","Title"],["reach","Reach",1],["saves","Saves",1],["shares","Shares",1],["s","Score",1]];
+  const rows=filtered().map(r=>({...r,saves:num(r.saves_7d)??num(r.saves_48h),shares:num(r.shares_7d)??num(r.shares_48h)})).sort((a,b)=>{const x=a[sortKey],y=b[sortKey];if(x===y)return 0;if(x===null||x===undefined||x==="")return 1;if(y===null||y===undefined||y==="")return-1;return(x>y?1:-1)*sortDir});
+  $("postTable").innerHTML=rows.length?`<table><tr>${cols.map(([k,n,isn])=>`<th class="s ${isn?"num":""}" onclick="sortBy('${k}')">${n}${sortKey===k?(sortDir>0?" ▲":" ▼"):""}</th>`).join("")}</tr>${rows.map(r=>`<tr><td class="mono" style="white-space:nowrap">${r.date}</td><td class="mono">${esc(r.slot_ist)}</td><td>${esc(r.platform)}</td><td>${esc(r.format)}</td><td>${esc(r.lane)}</td><td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>`:esc(r.title)}</td><td class="num">${fmt(r.reach)}</td><td class="num">${fmt(r.saves)}</td><td class="num">${fmt(r.shares)}</td><td class="num">${r.s===null?"n/a":r.s.toFixed(1)}</td></tr>`).join("")}</table><p class="note" style="margin-top:8px">${rows.length} posts</p>`:`<p class="empty">No posts match these filters.</p>`}
+function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1}drawPosts()}
+function exportCSV(){const rows=filtered();if(!rows.length)return;const keys=[...new Set(rows.flatMap(Object.keys))];const csv=[keys.join(","),...rows.map(r=>keys.map(k=>`"${String(r[k]??"").replace(/"/g,'""')}"`).join(","))].join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="whattheai_posts.csv";a.click()}
+function plan(){
+  const P=DATA.Plan||{},pr=planRows();if(!pr.length){$("cal").innerHTML=`<p class="empty">No plan loaded.</p>`;return}
+  $("planTitle").textContent=`${P.name||"Plan"} · ${P.period||""}`;$("planSub").textContent=Object.entries(P.themes||{}).map(([w,t])=>`Week ${w}: ${t}`).join("   ·   ")+". Click any piece for the full brief.";
+  const dates=[...new Set(pr.map(r=>r.date))].sort();let start=dates[0];const dow=(new Date(start+"T00:00:00Z").getUTCDay()+6)%7;start=addDays(start,-dow);const end=dates[dates.length-1];const now=todayIST();let html="";
+  for(let d=start;d<=end||((new Date(d+"T00:00:00Z").getUTCDay()+6)%7)!==0;d=addDays(d,1)){if(d>addDays(end,7))break;const ps=pr.filter(r=>r.date===d);const dn=new Date(d+"T00:00:00Z").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"});
+    html+=`<div class="day ${ps.length?"":"off"} ${d===now?"today":""}"><h4>${dn}</h4>${ps.map(r=>`<div class="pc ${laneCls(r.lane)}" onclick="showPiece('${r.id}')"><b>${r.slot_ist} · ${r.format}</b> <span class="pill ${r.status}" style="font-size:9px;padding:0 6px">${r.status}</span><br>${esc(r.kind==="line"?"X line":r.hook)}</div>`).join("")}</div>`}
+  $("cal").innerHTML=`<div class="cal">${html}</div>`;
+  const rl=pr.filter(r=>r.kind==="reel");$("planMix").innerHTML=[1,2].map(w=>{const rs=rl.filter(r=>r.week===w);return`<p class="mono" style="font-size:11px;margin:4px 0">WEEK ${w} · ${rs.length} REELS</p>`+LANES.map(([l,t,tl])=>{const n=rs.filter(r=>r.lane===l).length,s=rs.length?n/rs.length:0;return`<div class="trow"><div class="r"><span>${l}</span><span class="mono" style="font-size:12px">${n} · ${Math.round(s*100)}% (target ${tl})</span></div><div class="bar"><i style="width:${s*100}%"></i></div></div>`}).join("")}).join("");
+  const soon=pr.filter(r=>r.date>=now&&r.date<=addDays(now,2)&&r.verify_on_the_day&&r.kind!=="line");
+  $("verify").innerHTML=soon.length?`<table><tr><th>When</th><th>Piece</th><th>Check</th></tr>${soon.map(r=>`<tr><td class="mono" style="white-space:nowrap">${r.day} ${r.slot_ist}</td><td>${esc(r.hook)}</td><td class="note">${esc(r.verify_on_the_day)}</td></tr>`).join("")}</table>`:`<p class="empty">Nothing to verify in the next 3 days.</p>`}
+function showPiece(id){const r=planRows().find(x=>x.id===id);if(!r)return;$("dTitle").textContent=r.kind==="line"?"X line":r.hook;const F=[["When",`${r.day} ${r.date} · ${r.slot_ist} IST`],["Channels",r.channels],["Format",r.format],["Lane",r.lane+(r.india==="Y"?" (India)":"")],["Status",r.status+(r.note?" · "+r.note:"")],["Way in",r.way_in],["Story",r.kind==="line"?r.hook:r.story],["Useful",r.useful],["Fun",r.fun],["Verdict",r.verdict],["Verify",r.verify_on_the_day],["Hold lane",r.hold],["Path",r.path],["Models",r.model],["Plan ID",r.id]];$("dBody").innerHTML=F.filter(([,v])=>v).map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");$("dlg").showModal()}
+function lanes(){
+  const r28=reels(28).filter(r=>r.format!=="legacy");
+  const L=LANES.map(([n,t,tl])=>{const rs=r28.filter(r=>n==="India Edge"?String(r.india).toUpperCase()==="Y":r.lane===n&&String(r.india).toUpperCase()!=="Y");const sc=rs.map(r=>r.s).filter(x=>x!==null);const sk=rs.map(r=>num(r.skip_rate_7d)??num(r.skip_rate_48h)).filter(x=>x!==null);return{n,tl,posts:rs.length,share:r28.length?rs.length/r28.length:0,score:sc.length?sc.reduce((a,b)=>a+b,0)/sc.length:null,skip:sk.length?sk.reduce((a,b)=>a+b,0)/sk.length:null}});
+  const ranked=L.filter(x=>x.score!==null&&x.posts>=4).sort((a,b)=>b.score-a.score);L.forEach(x=>{if(x.posts<4||x.score===null)x.st="Wait";else{const i=ranked.indexOf(x);x.st=i<ranked.length/3?"Scale":(i>=ranked.length*2/3&&(x.skip===null||x.skip>.4)?"Cut":"Hold")}});
+  $("lanes").innerHTML=`<table><tr><th>Lane</th><th class="num">Posts</th><th class="num">Share</th><th>Target</th><th class="num">Score</th><th class="num">Skip</th><th>Signal</th></tr>${L.map(x=>`<tr><td>${x.n}</td><td class="num">${x.posts}</td><td class="num">${Math.round(x.share*100)}%</td><td>${x.tl}</td><td class="num">${x.score===null?"n/a":x.score.toFixed(1)}</td><td class="num">${x.skip===null?"n/a":Math.round(x.skip>1?x.skip:x.skip*100)+"%"}</td><td><span class="pill ${x.st}">${x.st}</span></td></tr>`).join("")}</table><p class="note" style="margin-top:8px">Legacy reels from before the restart are excluded.</p>`;
+  const fm={};r28.forEach(r=>{(fm[r.format]=fm[r.format]||[]).push(r)});
+  $("formats").innerHTML=Object.keys(fm).length?`<table><tr><th>Format</th><th class="num">Posts</th><th class="num">Avg reach</th><th class="num">Score</th><th class="num">Saves / 1k</th></tr>${Object.entries(fm).map(([f,rs])=>{const sc=rs.map(r=>r.s).filter(x=>x!==null),re=rs.map(r=>r.reach).filter(x=>x!==null),sv=rs.filter(r=>num(r.reach_48h)).map(r=>(num(r.saves_7d)??num(r.saves_48h)??0)/(num(r.reach_7d)??num(r.reach_48h))*1000);return`<tr><td>${esc(f)}</td><td class="num">${rs.length}</td><td class="num">${re.length?fmt(re.reduce((a,b)=>a+b,0)/re.length):"n/a"}</td><td class="num">${sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):"n/a"}</td><td class="num">${sv.length?(sv.reduce((a,b)=>a+b,0)/sv.length).toFixed(1):"n/a"}</td></tr>`}).join("")}</table>`:`<p class="empty">No new-format reels logged yet. First ones post Tue 24 Nov.</p>`;
+  const sc=DATA.Content_Log.filter(r=>r.date>=addDays(todayIST(),-27)&&r.s!==null).sort((a,b)=>b.s-a.s);const row=r=>`<tr><td class="mono">${r.date}</td><td>${esc(r.platform)}</td><td>${esc(r.format)}</td><td>${esc(r.title||r.content_id)}</td><td class="num">${fmt(r.reach)}</td><td class="num">${r.s.toFixed(1)}</td></tr>`;
+  $("topbottom").innerHTML=sc.length?`<table><tr><th>Date</th><th>Channel</th><th>Fmt</th><th>Best 5</th><th class="num">Reach</th><th class="num">Score</th></tr>${sc.slice(0,5).map(row).join("")}<tr><th>Date</th><th>Channel</th><th>Fmt</th><th>Worst 5</th><th class="num">Reach</th><th class="num">Score</th></tr>${sc.slice(-5).reverse().map(row).join("")}</table>`:`<p class="empty">No scored posts yet. Scores need reach, saves, shares and follows, which Grok logs at 48 h.</p>`}
+function health(){
+  const now=todayIST(),q=(DATA.Grok_QC||[]).map(r=>({...r,date:dstr(r.date)})),inc=(DATA.Incidents||[]).map(r=>({...r,date:dstr(r.date)}));
+  const q7=q.filter(r=>r.date>=addDays(now,-6)),fails=q7.filter(r=>!String(r.gate_g).toUpperCase().includes("PASS")),open=inc.filter(r=>String(r.status||"").toLowerCase()!=="closed");
+  const held=planRows().filter(r=>r.status==="held"&&r.date>=addDays(now,-6));
+  $("htiles").innerHTML=[tile("Packages checked, 7 d",q7.length,"by Grok (Gate G)",""),tile("Gate G fails, 7 d",fails.length,"caught before posting",fails.length?"down":"up"),tile("Open incidents",open.length,open.filter(r=>String(r.urgent).toUpperCase()==="Y").length+" urgent",open.length?"down":"up"),tile("Held pieces, 7 d",held.length,"in the HOLD lane",held.length?"down":"")].join("");
+  const days=[];for(let i=13;i>=0;i--)days.push(addDays(now,-i));
+  chart("cQC",{type:"bar",data:{labels:days.map(d=>d.slice(5)),datasets:[{label:"Pass",data:days.map(d=>q.filter(r=>r.date===d&&String(r.gate_g).toUpperCase().includes("PASS")).length),backgroundColor:"#2E6B4F"},{label:"Fail",data:days.map(d=>q.filter(r=>r.date===d&&!String(r.gate_g).toUpperCase().includes("PASS")).length),backgroundColor:"#DF3C90"}]},options:{maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,ticks:{precision:0}}},plugins:{legend:{position:"bottom"}}}});
+  const srt=[...open,...inc.filter(r=>!open.includes(r))];$("incidents").innerHTML=srt.length?`<table><tr><th>Date</th><th>What happened</th><th>Status</th></tr>${srt.slice(0,12).map(r=>`<tr><td class="mono">${r.date}</td><td>${esc(r.what_happened||r.check_or_type||"")}<div class="note">${esc(r.content_id||"")}</div></td><td>${esc(r.status||"open")}</td></tr>`).join("")}</table>`:`<p class="empty">No incidents logged.</p>`}
+function learn(){const t=(rows,cols)=>rows.length?`<table><tr>${cols.map(c=>`<th>${c.replace(/_/g," ")}</th>`).join("")}</tr>${rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(c==="date"||c==="start"?dstr(r[c]):r[c])}</td>`).join("")}</tr>`).join("")}</table>`:`<p class="empty">Nothing logged yet.</p>`;
+  const e=DATA.Experiments||[],d=DATA.Decisions||[];$("exps").innerHTML=t(e,e.length?Object.keys(e[0]):[]);$("decs").innerHTML=t(d,d.length?Object.keys(d[0]):[])}
+/* ---------- nav + gate ---------- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));document.querySelectorAll("section.page").forEach(s=>s.classList.toggle("on",s.id==="p-"+b.dataset.p));$("ptitle").textContent=b.textContent;Object.values(charts).forEach(c=>c.resize())});
+["fq","fplat","flane","ffmt","fdays"].forEach(id=>$(id).addEventListener("input",drawPosts));
+$("csv").onclick=exportCSV;$("load").onclick=()=>loadSheet($("sheetId").value);$("pick").onclick=()=>$("file").click();$("file").onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);
+$("useSeed").onclick=()=>{clearInterval(timer);SRC="seed";DATA=merge(null);renderAll();status("Showing seed data only.")};
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function start(){$("gate").remove();$("app").style.display="";DATA=merge(null);renderAll();status("Showing seed data. Connect the tracker sheet for live numbers.");const s=store.get("wtai_sheet")||DEFAULT_SHEET;if(s){$("sheetId").value=s;loadSheet(s,true)}}
+async function tryPass(){const h=await sha($("pass").value);if(h===PASS_HASH){try{sessionStorage.setItem("wtai_ok","1")}catch(e){}start()}else $("perr").textContent="That passcode is not right."}
+$("enter").onclick=tryPass;$("pass").addEventListener("keydown",e=>{if(e.key==="Enter")tryPass()});
+let ok=false;try{ok=sessionStorage.getItem("wtai_ok")==="1"}catch(e){}if(ok)start();else $("pass").focus();
+</script>
+</body></html>
